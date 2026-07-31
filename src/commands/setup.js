@@ -9,19 +9,45 @@ module.exports = {
 
     async execute(interaction) {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
+        
+        // Pega as configurações salvas
         const config = pegarConfig();
 
+        // CORREÇÃO: Se a quantidade estiver vazia (undefined), define como 2 para não quebrar o visual
+        if (config.quantidade === undefined || config.quantidade === null) {
+            config.quantidade = 2;
+        }
+
+        // --- CONSTRUÇÃO DO SEU PAINEL ORIGINAL (Visual Correto) ---
         const embed = new EmbedBuilder()
-            .setColor("#2b2d31")
-            .setTitle("⚙️ Painel de Configuração - Preview")
+            .setColor("#2b2d31") // Cor de fundo escura do seu painel
+            .setTitle(`⚙️ Painel de Configuração - Preview`)
             .setDescription("Abaixo está a pré-visualização das configurações atuais do bot.")
             .addFields(
-                { name: "🎮 Modo", value: `${config.modo}`, inline: true },
-                { name: "💰 Valor", value: `${config.valor}`, inline: true },
-                { name: "👥 Qtd por time", value: `${config.quantidade}`, inline: true },
-                { name: "🔀 Modo Misto", value: config.modoMisto ? "Ativado" : "Desativado", inline: true }
-            );
+                { 
+                    name: "🎮 Modo", 
+                    value: `\`${config.modo || "Mobile"}\``, 
+                    inline: true 
+                },
+                { 
+                    name: "💰 Valor", 
+                    value: `\`${config.valor || "R$ 1,00"}\``, 
+                    inline: true 
+                },
+                { 
+                    name: "👥 Qtd por time", 
+                    value: `\`${config.quantidade}\``, // Aqui o undefined não aparece mais!
+                    inline: true 
+                },
+                { 
+                    name: "🔀 Modo Misto", 
+                    value: config.modoMisto ? "✅ **ATIVADO**" : "❌ **DESATIVADO**", 
+                    inline: false 
+                }
+            )
+            .setFooter({ text: "Só você pode ver esta mensagem • Ignorar mensagem" });
 
+        // Botões do seu painel original
         const row1 = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId("editar_modo").setLabel("Modo").setStyle(ButtonStyle.Secondary),
             new ButtonBuilder().setCustomId("editar_valor").setLabel("Valor").setStyle(ButtonStyle.Secondary),
