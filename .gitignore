@@ -1,0 +1,13 @@
+# Dependências instaladas (muito pesado para subir pro Git)
+node_modules/
+
+# Arquivo de variáveis de ambiente com o TOKEN seguro (NÃO SUBIR)
+.env
+
+# Banco de dados local do ranking (para não sobrescrever dados no deploy)
+rankingData.json
+
+# Logs e arquivos temporários
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
