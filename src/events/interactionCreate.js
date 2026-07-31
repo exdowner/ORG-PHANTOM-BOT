@@ -36,7 +36,7 @@ module.exports = async (interaction) => {
             return;
         }
 
-        // --- TRATAMENTO DOS MODAIS (Editar Valor, Modo, Qtd) + ATUALIZAÇÃO DO PREVIEW EM TEMPO REAL ---
+        // --- TRATAMENTO DOS MODAIS (Valor, Modo, Qtd) + PREVIEW AO VIVO ---
         if (interaction.isModalSubmit()) {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
             const config = pegarConfig();
@@ -52,10 +52,8 @@ module.exports = async (interaction) => {
 
             salvarConfig(config);
 
-            // --- LÓGICA DE PREVIEW AO VIVO (Atualiza o painel do /setup na sua frente) ---
             const msgOriginal = interaction.message;
             if (msgOriginal && msgOriginal.embeds.length > 0) {
-                
                 const embedAtualizado = new EmbedBuilder()
                     .setColor("#2b2d31")
                     .setTitle(`ORG PHANTOM | Editor (Preview ao Vivo)`)
@@ -67,39 +65,63 @@ module.exports = async (interaction) => {
                         { name: "**Misto:**", value: config.modoMisto ? "✅ **ATIVADO**" : "❌ **DESATIVADO**", inline: false }
                     )
                     .setFooter({ text: "Só você pode ver esta mensagem • Ignorar mensagem" });
-
-                // Atualiza a mensagem original do bot no chat (O Preview)
                 await msgOriginal.edit({ embeds: [embedAtualizado] }).catch(() => {});
             }
-            // --------------------------------------------------------------------------
 
             return await interaction.editReply({ 
                 content: "✅ Configuração alterada com sucesso! O painel de preview foi atualizado." 
             });
         }
 
-        // --- TRATAMENTO DOS MENUS DE SELEÇÃO DE EMOJIS ---
+        // --- TRATAMENTO DOS MENUS DE SELEÇÃO DE EMOJIS (O QUE VOCÊ PEDIU) ---
         if (interaction.isStringSelectMenu()) {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
             const config = pegarConfig();
             const valorEscolhido = interaction.values[0];
 
-            if (interaction.customId === "select_emoji_gel_normal") config.emojiGelNormal = valorEscolhido;
-            if (interaction.customId === "select_emoji_gel_inf") config.emojiGelInfinito = valorEscolhido;
-            if (interaction.customId === "select_emoji_emul1") config.emojiEmul1 = valorEscolhido;
-            if (interaction.customId === "select_emoji_emul2") config.emojiEmul2 = valorEscolhido;
-            if (interaction.customId === "select_emoji_sair") config.emojiSair = valorEscolhido;
+            // Se o usuário escolheu "NONE", salva como string vazia (tira o emoji)
+            const emojiFinal = valorEscolhido === "NONE" ? "" : valorEscolhido;
+
+            // Atualiza os emojis no banco de acordo com o menu escolhido
+            if (interaction.customId === "select_emoji_gel_normal") {
+                config.emojiGelNormal = emojiFinal; // Aplica no Gel Normal
+                config.emojiGelInfinito = emojiFinal; // Aplica no Gel Infinito também!
+            }
+            if (interaction.customId === "select_emoji_emul1") {
+                config.emojiEmul1 = emojiFinal; // Aplica no Emulador 1
+                config.emojiEmul2 = emojiFinal; // Aplica no Emulador 2 também!
+            }
+            if (interaction.customId === "select_emoji_sair") {
+                config.emojiSair = emojiFinal;
+            }
 
             salvarConfig(config);
 
-            return await interaction.editReply({ content: `✅ Emoji atualizado com sucesso para: ${valorEscolhido}` });
+            // Atualiza o Preview ao vivo após escolher o emoji
+            const msgOriginal = interaction.message;
+            if (msgOriginal && msgOriginal.embeds.length > 0) {
+                const embedAtualizado = new EmbedBuilder()
+                    .setColor("#2b2d31")
+                    .setTitle(`ORG PHANTOM | Editor (Preview ao Vivo)`)
+                    .setDescription("As mudanças aparecem aqui em tempo real")
+                    .addFields(
+                        { name: "**Modo:**", value: `${config.modo || "mobile"}`, inline: false },
+                        { name: "**Valor:**", value: `${config.valor || "20,00"}`, inline: false },
+                        { name: "**Quantidade:**", value: `${config.quantidade || 2} jogadores`, inline: false },
+                        { name: "**Misto:**", value: config.modoMisto ? "✅ **ATIVADO**" : "❌ **DESATIVADO**", inline: false }
+                    )
+                    .setFooter({ text: "Só você pode ver esta mensagem • Ignorar mensagem" });
+                await msgOriginal.edit({ embeds: [embedAtualizado] }).catch(() => {});
+            }
+
+            return await interaction.editReply({ content: `✅ Emoji atualizado com sucesso para: ${emojiFinal || "Nenhum"}` });
         }
 
         // --- TRATAMENTO DOS BOTÕES ---
         if (interaction.isButton()) {
             const { customId, user, guild, channel, message } = interaction;
 
-            // BOTÕES QUE ABREM MODAIS
+            // Botões de Modal
             if (customId === "editar_valor") {
                 const modal = new ModalBuilder().setCustomId("modal_editar_valor").setTitle("Editar Valor");
                 const input = new TextInputBuilder().setCustomId("input_valor").setLabel("Novo Valor").setStyle(TextInputStyle.Short).setRequired(true);
@@ -121,39 +143,14 @@ module.exports = async (interaction) => {
                 return await interaction.showModal(modal);
             }
 
-            // BOTÃO QUE ABRE O MENU DE EMOJIS (CORRIGIDO PARA FUNCIONAR)
-            if (customId.startsWith("escolher_emoji_")) {
-                const tipo = customId.replace("escolher_emoji_", "");
-                const emojisDoServidor = guild.emojis.cache.first(25);
-
-                if (!emojisDoServidor.length) {
-                    return await interaction.reply({ content: "⚠️ Este servidor não possui emojis personalizados salvos para listar!", flags: MessageFlags.Ephemeral });
-                }
-
-                const selectMenu = new StringSelectMenuBuilder()
-                    .setCustomId(`select_emoji_${tipo}`)
-                    .setPlaceholder("Selecione um emoji do servidor")
-                    .addOptions(
-                        emojisDoServidor.map(e => ({
-                            label: e.name,
-                            value: `<:${e.name}:${e.id}>`,
-                            emoji: e.id
-                        }))
-                    );
-
-                const row = new ActionRowBuilder().addComponents(selectMenu);
-                return await interaction.reply({ content: "Escolha o emoji abaixo:", components: [row], flags: MessageFlags.Ephemeral });
-            }
-
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
 
-            // ATIVAR MISTO
+            // Botão Ativar Misto
             if (customId === "ativar_misto") {
                 const config = pegarConfig();
                 config.modoMisto = !config.modoMisto;
                 salvarConfig(config);
 
-                // Atualiza o Preview ao vivo ao mudar o misto
                 const msgOriginal = interaction.message;
                 if (msgOriginal && msgOriginal.embeds.length > 0) {
                     const embedAtualizado = new EmbedBuilder()
@@ -169,16 +166,14 @@ module.exports = async (interaction) => {
                         .setFooter({ text: "Só você pode ver esta mensagem • Ignorar mensagem" });
                     await msgOriginal.edit({ embeds: [embedAtualizado] }).catch(() => {});
                 }
-
                 return await interaction.editReply({ content: `🔄 Modo misto agora está: **${config.modoMisto ? "ATIVADO" : "DESATIVADO"}**` });
             }
 
-            // SALVAR
             if (customId === "salvar_config") {
                 return await interaction.editReply({ content: "✅ Configurações salvas e aplicadas com sucesso!" });
             }
 
-            // --- BOTÕES DE FILA (ENTRAR E SAIR) ---
+            // --- BOTÕES DE FILA ---
             if (customId.startsWith("entrar_") || customId === "sair_fila") {
                 const painelId = message.id;
                 let tipoFila = customId.replace("entrar_", "");
@@ -198,7 +193,6 @@ module.exports = async (interaction) => {
 
                 const tituloAtual = message.embeds[0]?.title || "";
                 
-                // Atualização do config mock preservando todas as configs
                 const configMock = pegarConfig();
                 configMock.modo = tituloAtual.split("|")[0]?.trim() || configMock.modo;
                 configMock.valor = tituloAtual.split("|")[1]?.trim() || configMock.valor;
@@ -216,11 +210,10 @@ module.exports = async (interaction) => {
                 if (customId === "sair_fila") {
                     return await interaction.editReply({ content: `🚪 <@${user.id}>, você saiu de todas as filas!` });
                 }
-
                 return await interaction.editReply({ content: `✅ <@${user.id}>, você entrou na fila!` });
             }
 
-            // --- RANKING E PERFIL ---
+            // --- RANKING ---
             if (customId === "btn_meu_perfil") {
                 const perfil = ranking.pegarPerfil(user.id);
                 const total = perfil.vitorias + perfil.derrotas;
