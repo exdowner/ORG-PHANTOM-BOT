@@ -50,7 +50,6 @@ module.exports = async (interaction) => {
 
             salvarConfig(config);
 
-            // Atualiza o preview do /setup
             const msgOriginal = interaction.message;
             if (msgOriginal && msgOriginal.embeds.length > 0) {
                 const novoPreview = painelBuilder(config, [], []);
@@ -136,7 +135,6 @@ module.exports = async (interaction) => {
                 config.modoMisto = !config.modoMisto;
                 salvarConfig(config);
 
-                // Atualiza o preview do /setup na hora
                 const msgOriginal = interaction.message;
                 if (msgOriginal && msgOriginal.embeds.length > 0) {
                     const novoPreview = painelBuilder(config, [], []);
@@ -149,13 +147,15 @@ module.exports = async (interaction) => {
                 return await interaction.editReply({ content: "✅ Salvo!" });
             }
 
-            // --- Lógica das Filas ---
+            // --- Lógica das Filas (Entrar/Sair) ---
             if (customId.startsWith("entrar_") || customId === "sair_fila") {
                 const painelId = message.id;
                 let tipoFila = customId.replace("entrar_", "");
                 
-                const tituloAtual = message.embeds[0]?.title || "";
-                const ehMisto = tituloAtual.includes("Emulador") || tituloAtual.includes("emulador");
+                // AQUI É A MUDANÇA MILIONÁRIA:
+                // Em vez de ler o título, a gente lê o BANCO DE DADOS!
+                const configReal = pegarConfig();
+                const ehMisto = configReal.modoMisto === true;
 
                 if (tipoFila === "gel_normal") tipoFila = "normal";
                 if (tipoFila === "gel_inf") tipoFila = "infinito";
@@ -177,8 +177,16 @@ module.exports = async (interaction) => {
                 const lista2 = filas.jogadores(ehMisto ? "2emuladores" : "infinito", painelId);
                 
                 const configMock = pegarConfig();
-                configMock.modo = tituloAtual.split("|")[0]?.trim() || configMock.modo;
-                configMock.valor = tituloAtual.split("|")[1]?.trim() || configMock.valor;
+                // Configurações para o Builder
+                configMock.modo = configReal.modo || "Mobile";
+                configMock.valor = configReal.valor || "20,00";
+                configMock.nomePainel = configReal.nomePainel || "PHANTOM";
+                configMock.emojiGelNormal = configReal.emojiGelNormal || "🧊";
+                configMock.emojiGelInfinito = configReal.emojiGelInfinito || "♾️";
+                configMock.emojiEmul1 = configReal.emojiEmul1 || "📱";
+                configMock.emojiEmul2 = configReal.emojiEmul2 || "💻";
+                configMock.emojiSair = configReal.emojiSair || "🚪";
+                // FORÇA O MISTO A SER O QUE ESTÁ NO BANCO DE DADOS!!!
                 configMock.modoMisto = ehMisto;
 
                 try {
