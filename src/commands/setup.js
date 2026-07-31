@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags, PermissionFlagsBits } = require("discord.js");
 const { pegarConfig } = require("../systems/config.js");
+const painelBuilder = require("../systems/painelBuilder.js");
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -10,22 +11,12 @@ module.exports = {
     async execute(interaction) {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
         const config = pegarConfig();
-
         if (!config.quantidade) config.quantidade = 2;
 
-        const embed = new EmbedBuilder()
-            .setColor("#2b2d31")
-            .setTitle(`ORG PHANTOM | Editor (Preview ao Vivo)`)
-            .setDescription("As mudanças aparecem aqui em tempo real")
-            .addFields(
-                { name: "**📛 Nome do Painel:**", value: `\`${config.nomePainel || "PHANTOM"}\``, inline: false },
-                { name: "**🎮 Modo:**", value: `\`${config.modo || "Mobile"}\``, inline: true },
-                { name: "**💰 Valor:**", value: `\`${config.valor || "20,00"}\``, inline: true },
-                { name: "**👥 Quantidade:**", value: `\`${config.quantidade} jogadores\``, inline: true },
-                { name: "**🔀 Misto:**", value: config.modoMisto ? "✅ Ativado" : "❌ Desativado", inline: false }
-            )
-            .setFooter({ text: "Só você pode ver esta mensagem • Ignorar mensagem" });
+        // Gera o preview usando o próprio painelBuilder, com filas vazias
+        const painelPreview = painelBuilder(config, [], []);
 
+        // Botões de ação (colocados EMBaIXO do painel)
         const row1 = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId("editar_nome_painel").setLabel("📛 Nome").setStyle(ButtonStyle.Secondary),
             new ButtonBuilder().setCustomId("editar_valor").setLabel("💰 Valor").setStyle(ButtonStyle.Primary),
@@ -35,22 +26,22 @@ module.exports = {
 
         const row2 = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId("escolher_emoji_gel_normal").setLabel("🧊 Gel Normal").setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId("escolher_emoji_gel_inf").setLabel("♾️ Gel Inf").setStyle(ButtonStyle.Success)
+            new ButtonBuilder().setCustomId("escolher_emoji_gel_inf").setLabel("♾️ Gel Inf").setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId("ativar_misto").setLabel("🔀 Misto On/Off").setStyle(ButtonStyle.Primary)
         );
 
         const row3 = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId("escolher_emoji_emul1").setLabel("📱 Emul 1").setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId("escolher_emoji_emul2").setLabel("💻 Emul 2").setStyle(ButtonStyle.Success)
+            new ButtonBuilder().setCustomId("escolher_emoji_emul2").setLabel("💻 Emul 2").setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId("escolher_emoji_sair").setLabel("🚪 Sair").setStyle(ButtonStyle.Danger)
         );
 
         const row4 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId("escolher_emoji_sair").setLabel("🚪 Sair").setStyle(ButtonStyle.Danger),
-            new ButtonBuilder().setCustomId("ativar_misto").setLabel("🔀 Misto On/Off").setStyle(ButtonStyle.Primary),
             new ButtonBuilder().setCustomId("salvar_config").setLabel("💾 Salvar").setStyle(ButtonStyle.Success)
         );
 
         return await interaction.editReply({ 
-            embeds: [embed], 
+            embeds: painelPreview.embeds, 
             components: [row1, row2, row3, row4] 
         });
     }

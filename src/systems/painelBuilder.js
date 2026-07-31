@@ -18,7 +18,7 @@ module.exports = (config, fila1 = [], fila2 = []) => {
 
     const row = new ActionRowBuilder();
 
-    // SE ESTIVER MISTO
+    // SE MISTO ESTIVER ATIVADO
     if (config.modoMisto === true) {
         embed.addFields(
             { name: `📱 1 Emulador (${fila1.length}/${qtd})`, value: formatarFila(fila1), inline: false },

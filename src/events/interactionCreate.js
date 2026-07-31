@@ -50,21 +50,11 @@ module.exports = async (interaction) => {
 
             salvarConfig(config);
 
+            // Atualiza o preview do /setup
             const msgOriginal = interaction.message;
             if (msgOriginal && msgOriginal.embeds.length > 0) {
-                const embedAtualizado = new EmbedBuilder()
-                    .setColor("#2b2d31")
-                    .setTitle(`ORG PHANTOM | Editor (Preview ao Vivo)`)
-                    .setDescription("As mudanças aparecem aqui em tempo real")
-                    .addFields(
-                        { name: "**📛 Nome do Painel:**", value: `\`${config.nomePainel || "PHANTOM"}\``, inline: false },
-                        { name: "**🎮 Modo:**", value: `\`${config.modo || "Mobile"}\``, inline: true },
-                        { name: "**💰 Valor:**", value: `\`${config.valor || "20,00"}\``, inline: true },
-                        { name: "**👥 Quantidade:**", value: `\`${config.quantidade} jogadores\``, inline: true },
-                        { name: "**🔀 Misto:**", value: config.modoMisto ? "✅ Ativado" : "❌ Desativado", inline: false }
-                    )
-                    .setFooter({ text: "Só você pode ver esta mensagem • Ignorar mensagem" });
-                await msgOriginal.edit({ embeds: [embedAtualizado] }).catch(() => {});
+                const novoPreview = painelBuilder(config, [], []);
+                await msgOriginal.edit({ embeds: novoPreview.embeds }).catch(() => {});
             }
 
             return await interaction.editReply({ content: "✅ Configuração alterada!" });
@@ -146,21 +136,11 @@ module.exports = async (interaction) => {
                 config.modoMisto = !config.modoMisto;
                 salvarConfig(config);
 
+                // Atualiza o preview do /setup na hora
                 const msgOriginal = interaction.message;
                 if (msgOriginal && msgOriginal.embeds.length > 0) {
-                    const embedAtualizado = new EmbedBuilder()
-                        .setColor("#2b2d31")
-                        .setTitle(`ORG PHANTOM | Editor (Preview ao Vivo)`)
-                        .setDescription("As mudanças aparecem aqui em tempo real")
-                        .addFields(
-                            { name: "**📛 Nome do Painel:**", value: `\`${config.nomePainel || "PHANTOM"}\``, inline: false },
-                            { name: "**🎮 Modo:**", value: `\`${config.modo || "Mobile"}\``, inline: true },
-                            { name: "**💰 Valor:**", value: `\`${config.valor || "20,00"}\``, inline: true },
-                            { name: "**👥 Quantidade:**", value: `\`${config.quantidade} jogadores\``, inline: true },
-                            { name: "**🔀 Misto:**", value: config.modoMisto ? "✅ Ativado" : "❌ Desativado", inline: false }
-                        )
-                        .setFooter({ text: "Só você pode ver esta mensagem • Ignorar mensagem" });
-                    await msgOriginal.edit({ embeds: [embedAtualizado] }).catch(() => {});
+                    const novoPreview = painelBuilder(config, [], []);
+                    await msgOriginal.edit({ embeds: novoPreview.embeds }).catch(() => {});
                 }
                 return await interaction.editReply({ content: `🔄 Misto: ${config.modoMisto ? "Ativado" : "Desativado"}` });
             }
@@ -169,17 +149,14 @@ module.exports = async (interaction) => {
                 return await interaction.editReply({ content: "✅ Salvo!" });
             }
 
-            // --- Lógica das Filas (Entrar/Sair) ---
+            // --- Lógica das Filas ---
             if (customId.startsWith("entrar_") || customId === "sair_fila") {
                 const painelId = message.id;
                 let tipoFila = customId.replace("entrar_", "");
                 
-                // CORREÇÃO QUE IMPEDE DE VOLTAR AO GEL
-                // Verifica o título do painel: se tiver "Emulador", mantém o modo Misto
                 const tituloAtual = message.embeds[0]?.title || "";
                 const ehMisto = tituloAtual.includes("Emulador") || tituloAtual.includes("emulador");
 
-                // Mapeamento correto das filas
                 if (tipoFila === "gel_normal") tipoFila = "normal";
                 if (tipoFila === "gel_inf") tipoFila = "infinito";
                 if (tipoFila === "1emulador") tipoFila = "1emulador";
@@ -196,14 +173,12 @@ module.exports = async (interaction) => {
                     if (!resultado.ok) return await interaction.editReply({ content: resultado.motivo });
                 }
 
-                // Pega as listas corretas baseado no Misto detectado
                 const lista1 = filas.jogadores(ehMisto ? "1emulador" : "normal", painelId);
                 const lista2 = filas.jogadores(ehMisto ? "2emuladores" : "infinito", painelId);
                 
                 const configMock = pegarConfig();
                 configMock.modo = tituloAtual.split("|")[0]?.trim() || configMock.modo;
                 configMock.valor = tituloAtual.split("|")[1]?.trim() || configMock.valor;
-                // FORÇA O MISTO A SER O QUE O TÍTULO DIZ, NÃO O QUE O BOTÃO FOI CLICADO
                 configMock.modoMisto = ehMisto;
 
                 try {
