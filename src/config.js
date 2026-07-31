@@ -1,40 +1,46 @@
-const fs = require("fs");
-const path = require("path");
-const configPath = path.join(__dirname, "../../config.json");
+const fs = require('fs');
+const path = require('path');
 
-const padrao = {
-    valor: "R$ 10,00",
-    modo: "X1",
+const caminhoConfig = path.join(__dirname, '../../config.json');
+
+// Configuração padrão caso o arquivo não exista
+const defaultConfig = {
+    modo: "Mobile",
+    valor: "R$ 5,00",
     quantidade: 2,
     modoMisto: false,
     emojiGelNormal: "🧊",
     emojiGelInfinito: "♾️",
-    emojiEmulador: "🟢",
     emojiSair: "🚪"
 };
 
-function carregar() {
-    try {
-        if (fs.existsSync(configPath)) {
-            return { ...padrao, ...JSON.parse(fs.readFileSync(configPath, "utf8")) };
-        }
-    } catch (e) {}
-    return { ...padrao };
-}
-
-function salvar(config) {
-    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
-}
-
 function pegarConfig() {
-    return carregar();
+    try {
+        if (!fs.existsSync(caminhoConfig)) {
+            fs.writeFileSync(caminhoConfig, JSON.stringify(defaultConfig, null, 2));
+            return defaultConfig;
+        }
+        const dados = fs.readFileSync(caminhoConfig, 'utf8');
+        return { ...defaultConfig, ...JSON.parse(dados) };
+    } catch (err) {
+        console.error("Erro ao ler config:", err);
+        return defaultConfig;
+    }
 }
 
-function mudarConfig(chave, valor) {
-    const config = carregar();
-    config[chave] = valor;
-    salvar(config);
-    return config;
+function salvarConfig(novaConfig) {
+    try {
+        const atual = pegarConfig();
+        const atualizado = { ...atual, ...novaConfig };
+        fs.writeFileSync(caminhoConfig, JSON.stringify(atualizado, null, 2));
+        return true;
+    } catch (err) {
+        console.error("Erro ao salvar config:", err);
+        return false;
+    }
 }
 
-module.exports = { pegarConfig, mudarConfig };
+module.exports = {
+    pegarConfig,
+    salvarConfig
+};
