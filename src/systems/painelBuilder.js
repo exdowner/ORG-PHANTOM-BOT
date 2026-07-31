@@ -10,7 +10,6 @@ module.exports = (config, fila1 = [], fila2 = []) => {
         return fila.map(j => `<@${j.id}>`).join("\n");
     };
 
-    // --- CONSTRUÇÃO DO EMBED (SEM EMOJIS NOS NOMES DA LISTA) ---
     const embed = new EmbedBuilder()
         .setColor("#2b2d31")
         .setTitle(titulo)
@@ -29,26 +28,23 @@ module.exports = (config, fila1 = [], fila2 = []) => {
             }
         );
 
-    // --- CONSTRUÇÃO DOS BOTÕES ---
     const row = new ActionRowBuilder()
         .addComponents(
             new ButtonBuilder()
                 .setCustomId("entrar_gel_normal")
                 .setLabel("Gel Normal")
-                .setEmoji(config.emojiGelNormal || "🧊") // Pega o emoji salvo
-                .setStyle(ButtonStyle.Primary), // AZUL
-
+                .setEmoji(config.emojiGelNormal || "🧊")
+                .setStyle(ButtonStyle.Primary),
             new ButtonBuilder()
                 .setCustomId("entrar_gel_inf")
                 .setLabel("Gel Infinito")
-                .setEmoji(config.emojiGelNormal || "🧊") // USA O MESMO EMOJI DO GEL NORMAL
-                .setStyle(ButtonStyle.Primary), // TAMBÉM AZUL
-
+                .setEmoji(config.emojiGelInfinito || "♾️")
+                .setStyle(ButtonStyle.Primary),
             new ButtonBuilder()
                 .setCustomId("sair_fila")
-                .setLabel("Sair") // TEXTO CORRIGIDO
-                .setEmoji(config.emojiSair || "🚪") // Pega o emoji salvo
-                .setStyle(ButtonStyle.Danger) // VERMELHO
+                .setLabel("Sair")
+                .setEmoji(config.emojiSair || "🚪")
+                .setStyle(ButtonStyle.Danger)
         );
 
     return { embeds: [embed], components: [row] };
