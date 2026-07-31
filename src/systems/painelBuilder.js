@@ -18,13 +18,6 @@ module.exports = (config, fila1 = [], fila2 = []) => {
 
     const row = new ActionRowBuilder();
 
-    // ==========================================
-    // ✅ EMOJIS CORRETOS COM OS IDs QUE VOCÊ PASSOU
-    const emojiEmulador = "<:bluestacks:1532885656030806147>";
-    const emojiGel = "<:gloowall:1532885980422475868>";
-    const emojiSair = "<:leave:1532886068767228136>";
-    // ==========================================
-
     // MODO MISTO
     if (config.modoMisto === true) {
         embed.addFields(
@@ -35,17 +28,17 @@ module.exports = (config, fila1 = [], fila2 = []) => {
             new ButtonBuilder()
                 .setCustomId("entrar_1emulador")
                 .setLabel("1 Emulador")
-                .setEmoji(emojiEmulador)
+                .setEmoji(config.emojiEmul1 || null) // Se for null, não coloca emoji
                 .setStyle(ButtonStyle.Success),
             new ButtonBuilder()
                 .setCustomId("entrar_2emuladores")
                 .setLabel("2 Emuladores")
-                .setEmoji(emojiEmulador)
+                .setEmoji(config.emojiEmul2 || null)
                 .setStyle(ButtonStyle.Success),
             new ButtonBuilder()
                 .setCustomId("sair_fila")
                 .setLabel("Sair")
-                .setEmoji(emojiSair)
+                .setEmoji(config.emojiSair || null)
                 .setStyle(ButtonStyle.Danger)
         );
     } else {
@@ -58,17 +51,17 @@ module.exports = (config, fila1 = [], fila2 = []) => {
             new ButtonBuilder()
                 .setCustomId("entrar_gel_normal")
                 .setLabel("Gel Normal")
-                .setEmoji(emojiGel)
+                .setEmoji(config.emojiGelNormal || null)
                 .setStyle(ButtonStyle.Primary),
             new ButtonBuilder()
                 .setCustomId("entrar_gel_inf")
                 .setLabel("Gel Infinito")
-                .setEmoji(emojiGel)
+                .setEmoji(config.emojiGelInfinito || null)
                 .setStyle(ButtonStyle.Success),
             new ButtonBuilder()
                 .setCustomId("sair_fila")
                 .setLabel("Sair")
-                .setEmoji(emojiSair)
+                .setEmoji(config.emojiSair || null)
                 .setStyle(ButtonStyle.Danger)
         );
     }
