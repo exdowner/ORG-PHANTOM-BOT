@@ -21,8 +21,9 @@ module.exports = (config, fila1 = [], fila2 = []) => {
     // SE O BANCO DE DADOS TIVER MODO MISTO ATIVADO
     if (config.modoMisto === true) {
         embed.addFields(
-            { name: `📱 1 Emulador (${fila1.length}/${qtd})`, value: formatarFila(fila1), inline: false },
-            { name: `💻 2 Emuladores (${fila2.length}/${qtd})`, value: formatarFila(fila2), inline: false }
+            // ⬇️ AQUI EU TIRO OS EMOJIS 📱 e 💻 DOS NOMES ⬇️
+            { name: `1 Emulador (${fila1.length}/${qtd})`, value: formatarFila(fila1), inline: false },
+            { name: `2 Emuladores (${fila2.length}/${qtd})`, value: formatarFila(fila2), inline: false }
         );
         row.addComponents(
             new ButtonBuilder()
