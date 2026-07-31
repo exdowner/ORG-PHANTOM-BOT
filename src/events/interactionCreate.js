@@ -151,11 +151,18 @@ module.exports = async (interaction) => {
 
                 const tituloAtual = message.embeds[0]?.title || "";
                 
-                // ConfigMock atualizado para preservar todas as configurações salvas (emojis, quantidade, etc.)
+                // --- CORREÇÃO DO CONFIG MOCK AQUI ---
+                // 1. Carrega as configurações salvas (mantendo emojis, quantidade e etc)
                 const configMock = pegarConfig();
+
+                // 2. Garante que quantidade não fique undefined caso a config antiga não tivesse esse campo
+                if (configMock.quantidade === undefined) configMock.quantidade = 2;
+
+                // 3. Atualiza APENAS o modo, valor e misto (o resto permanece salvo!)
                 configMock.modo = tituloAtual.split("|")[0]?.trim() || configMock.modo;
                 configMock.valor = tituloAtual.split("|")[1]?.trim() || configMock.valor;
                 configMock.modoMisto = isMisto;
+                // -------------------------------------
 
                 try {
                     if (typeof painelBuilder === "function") {
