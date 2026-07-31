@@ -77,7 +77,7 @@ module.exports = async (interaction) => {
             return;
         }
 
-        // --- SISTEMA DE FILAS (COM TIMEOUT PREVIDO E ATUALIZAÇÃO PÚBLICA) ---
+        // --- SISTEMA DE FILAS (ATUALIZAÇÃO DO PAINEL PÚBLICO) ---
         if (customId.startsWith("entrar_") || customId === "sair_fila") {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
@@ -99,27 +99,30 @@ module.exports = async (interaction) => {
                 });
             }
 
-            // Tenta atualizar o painel público do canal com os novos jogadores
+            // Atualiza o painel público exibindo os nicks/menções dos jogadores nas filas
             try {
-                const listaJogadores = filas.jogadores(tipoFila, painelId);
-                const descJogadores = listaJogadores.length > 0 
-                    ? listaJogadores.map(j => `<@${j.id}>`).join("\n") 
-                    : "Nenhum jogador na fila.";
-
                 const embedAntigo = message.embeds[0];
                 if (embedAntigo) {
                     const novoEmbed = EmbedBuilder.from(embedAntigo);
-                    const fields = novoEmbed.data.fields || [];
-                    const campoIndex = fields.findIndex(f => f.name.toLowerCase().includes(tipoFila.toLowerCase()));
                     
-                    if (campoIndex !== -1) {
-                        fields[campoIndex].value = descJogadores;
-                        novoEmbed.setFields(fields);
-                        await message.edit({ embeds: [novoEmbed] }).catch(() => {});
-                    }
+                    const jNormal = filas.jogadores("normal", painelId).map(j => `<@${j.id}>`).join(", ") || "Vazio";
+                    const jInfinito = filas.jogadores("infinito", painelId).map(j => `<@${j.id}>`).join(", ") || "Vazio";
+                    const j1Emul = filas.jogadores("1emulador", painelId).map(j => `<@${j.id}>`).join(", ") || "Vazio";
+                    const j2Emul = filas.jogadores("2emuladores", painelId).map(j => `<@${j.id}>`).join(", ") || "Vazio";
+
+                    const novaDescricao = `
+**Status da Fila Atualizada:**
+🧊 **Gel Normal:** ${jNormal}
+♾️ **Gel Infinito:** ${jInfinito}
+🟢 **1 Emulador:** ${j1Emul}
+🟢 **2 Emuladores:** ${j2Emul}
+                    `.trim();
+
+                    novoEmbed.setDescription(novaDescricao);
+                    await message.edit({ embeds: [novoEmbed] }).catch(() => {});
                 }
             } catch (err) {
-                console.error("Erro ao atualizar painel público:", err);
+                console.error("Erro ao atualizar o painel público:", err);
             }
 
             return await interaction.editReply({
