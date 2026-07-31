@@ -1,64 +1,46 @@
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
-const { pegarConfig } = require("../systems/config");
-
-async function enviarPreview(interaction, config) {
-    const isMisto = config.modoMisto === true || config.modoMisto === "true";
-
-    const embed = new EmbedBuilder()
-        .setColor("#5865F2")
-        .setTitle("ORG PHANTOM | Editor (Preview)")
-        .setDescription(`
-**Modo:** ${config.modo || "X1"}
-**Valor:** ${config.valor || "R$ 10,00"}
-**Quantidade:** ${config.quantidade || 2} jogadores
-**Misto:** ${isMisto ? "✅ ATIVADO" : "❌ DESATIVADO"}
-
-${isMisto ? `
-${config.emojiEmulador || "🟢"} **1 Emulador**
-${config.emojiEmulador || "🟢"} **2 Emuladores**
-${config.emojiSair || "🚪"} **Sair**
-` : `
-${config.emojiGelNormal || "🧊"} **Gel Normal**
-${config.emojiGelInfinito || "♾️"} **Gel Infinito**
-${config.emojiSair || "🚪"} **Sair**
-`}
-        `)
-        .setFooter({ text: "Preview ao vivo" });
-
-    const linha1 = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId("editar_valor").setLabel("Valor").setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId("editar_modo").setLabel("Modo").setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId("editar_quantidade").setLabel("Quantidade").setEmoji("👥").setStyle(ButtonStyle.Secondary)
-    );
-
-    const linha2 = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId("editar_emojis").setLabel("Emojis").setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder()
-            .setCustomId("ativar_misto")
-            .setLabel(isMisto ? "Desativar Misto" : "Ativar Misto")
-            .setEmoji("🔀")
-            .setStyle(isMisto ? ButtonStyle.Danger : ButtonStyle.Success),
-        new ButtonBuilder().setCustomId("salvar_config").setLabel("Salvar").setStyle(ButtonStyle.Success)
-    );
-
-    const payload = { embeds: [embed], components: [linha1, linha2], flags: 64 };
-
-    if (interaction.deferred || interaction.replied) {
-        return interaction.editReply(payload).catch(() => {});
-    }
-    return interaction.reply(payload).catch(() => {});
-}
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags, PermissionFlagsBits } = require("discord.js");
+const { pegarConfig } = require("../systems/config.js");
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName("setup")
-        .setDescription("Abrir editor da ORG PHANTOM"),
+        .setDescription("Painel de configuração do bot")
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     async execute(interaction) {
-        await interaction.deferReply({ flags: 64 });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
         const config = pegarConfig();
-        await enviarPreview(interaction, config);
+
+        const embed = new EmbedBuilder()
+            .setColor("#2b2d31")
+            .setTitle("⚙️ Painel de Configuração - Preview")
+            .setDescription("Use os botões abaixo para configurar os parâmetros e emojis do seu painel de filas.")
+            .addFields(
+                { name: "🎮 Modo", value: `${config.modo}`, inline: true },
+                { name: "💰 Valor", value: `${config.valor}`, inline: true },
+                { name: "👥 Quantidade por time", value: `${config.quantidade}`, inline: true },
+                { name: "🔀 Modo Misto", value: config.modoMisto ? "Ativado" : "Desativado", inline: true }
+            );
+
+        const row1 = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId("editar_modo").setLabel("Modo").setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId("editar_valor").setLabel("Valor").setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId("editar_quantidade").setLabel("Qtd").setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId("ativar_misto").setLabel("Misto On/Off").setStyle(ButtonStyle.Primary)
+        );
+
+        const row2 = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId("escolher_emoji_gel_normal").setLabel("Emoji Gel Normal").setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId("escolher_emoji_gel_inf").setLabel("Emoji Gel Inf").setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId("escolher_emoji_emul1").setLabel("Emoji Emul 1").setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId("escolher_emoji_emul2").setLabel("Emoji Emul 2").setStyle(ButtonStyle.Success)
+        );
+
+        const row3 = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId("escolher_emoji_sair").setLabel("Emoji Sair").setStyle(ButtonStyle.Danger),
+            new ButtonBuilder().setCustomId("salvar_config").setLabel("Salvar Tudo").setStyle(ButtonStyle.Primary)
+        );
+
+        return await interaction.editReply({ embeds: [embed], components: [row1, row2, row3] });
     }
 };
-
-module.exports.enviarPreview = enviarPreview;
