@@ -26,7 +26,6 @@ module.exports = {
             )
             .setFooter({ text: "Só você pode ver esta mensagem • Ignorar mensagem" });
 
-        // LINHA 1: Nome, Valor, Modo, Quantidade
         const row1 = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId("editar_nome_painel").setLabel("📛 Nome").setStyle(ButtonStyle.Secondary),
             new ButtonBuilder().setCustomId("editar_valor").setLabel("💰 Valor").setStyle(ButtonStyle.Primary),
@@ -34,7 +33,6 @@ module.exports = {
             new ButtonBuilder().setCustomId("editar_quantidade").setLabel("👥 Qtd").setStyle(ButtonStyle.Secondary)
         );
 
-        // LINHA 2: EMOJIS (Todos separados por botão)
         const row2 = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId("escolher_emoji_gel_normal").setLabel("🧊 Gel Normal").setStyle(ButtonStyle.Success),
             new ButtonBuilder().setCustomId("escolher_emoji_gel_inf").setLabel("♾️ Gel Inf").setStyle(ButtonStyle.Success)
@@ -45,7 +43,6 @@ module.exports = {
             new ButtonBuilder().setCustomId("escolher_emoji_emul2").setLabel("💻 Emul 2").setStyle(ButtonStyle.Success)
         );
 
-        // LINHA 4: Sair, Misto, Salvar
         const row4 = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId("escolher_emoji_sair").setLabel("🚪 Sair").setStyle(ButtonStyle.Danger),
             new ButtonBuilder().setCustomId("ativar_misto").setLabel("🔀 Misto On/Off").setStyle(ButtonStyle.Primary),

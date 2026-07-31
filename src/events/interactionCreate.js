@@ -174,22 +174,19 @@ module.exports = async (interaction) => {
                 const painelId = message.id;
                 let tipoFila = customId.replace("entrar_", "");
                 
-                // CORREÇÃO MÁGICA AQUI:
-                // Verifica se o título do painel já está no modo Misto
+                // CORREÇÃO QUE IMPEDE DE VOLTAR AO GEL
+                // Verifica o título do painel: se tiver "Emulador", mantém o modo Misto
                 const tituloAtual = message.embeds[0]?.title || "";
                 const ehMisto = tituloAtual.includes("Emulador") || tituloAtual.includes("emulador");
 
+                // Mapeamento correto das filas
                 if (tipoFila === "gel_normal") tipoFila = "normal";
                 if (tipoFila === "gel_inf") tipoFila = "infinito";
+                if (tipoFila === "1emulador") tipoFila = "1emulador";
+                if (tipoFila === "2emuladores") tipoFila = "2emuladores";
 
-                // Verificação de segurança para funções
-                if (typeof filas.sairFila !== 'function') {
-                    console.error("ERRO: filas.sairFila não encontrada!");
-                    return await interaction.editReply({ content: "❌ Erro interno: Função de sair não encontrada." });
-                }
-                if (typeof filas.entrarFila !== 'function') {
-                    console.error("ERRO: filas.entrarFila não encontrada!");
-                    return await interaction.editReply({ content: "❌ Erro interno: Função de entrar não encontrada." });
+                if (typeof filas.sairFila !== 'function' || typeof filas.entrarFila !== 'function') {
+                    return await interaction.editReply({ content: "❌ Erro: Arquivo de filas não configurado corretamente." });
                 }
 
                 if (customId === "sair_fila") {
@@ -199,14 +196,14 @@ module.exports = async (interaction) => {
                     if (!resultado.ok) return await interaction.editReply({ content: resultado.motivo });
                 }
 
-                // Pega as listas atualizadas
+                // Pega as listas corretas baseado no Misto detectado
                 const lista1 = filas.jogadores(ehMisto ? "1emulador" : "normal", painelId);
                 const lista2 = filas.jogadores(ehMisto ? "2emuladores" : "infinito", painelId);
                 
                 const configMock = pegarConfig();
                 configMock.modo = tituloAtual.split("|")[0]?.trim() || configMock.modo;
                 configMock.valor = tituloAtual.split("|")[1]?.trim() || configMock.valor;
-                // AQUI É A CORREÇÃO: Força o modo misto baseado no título, e não no botão clicado!
+                // FORÇA O MISTO A SER O QUE O TÍTULO DIZ, NÃO O QUE O BOTÃO FOI CLICADO
                 configMock.modoMisto = ehMisto;
 
                 try {
