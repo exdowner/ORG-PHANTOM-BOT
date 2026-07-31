@@ -1,15 +1,14 @@
 const { 
     EmbedBuilder, 
     MessageFlags, 
-    PermissionFlagsBits, 
-    ChannelType, 
     ActionRowBuilder, 
     ButtonBuilder, 
     ButtonStyle, 
     ModalBuilder, 
     TextInputBuilder, 
     TextInputStyle,
-    StringSelectMenuBuilder 
+    StringSelectMenuBuilder,
+    StringSelectMenuOptionBuilder
 } = require("discord.js");
 const ranking = require("../systems/ranking.js");
 const filas = require("../systems/filas.js");
@@ -73,31 +72,27 @@ module.exports = async (interaction) => {
             });
         }
 
-        // --- TRATAMENTO DOS MENUS DE SELEÇÃO DE EMOJIS (O QUE VOCÊ PEDIU) ---
+        // --- TRATAMENTO DOS MENUS DE SELEÇÃO DE EMOJIS ---
         if (interaction.isStringSelectMenu()) {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
             const config = pegarConfig();
             const valorEscolhido = interaction.values[0];
-
-            // Se o usuário escolheu "NONE", salva como string vazia (tira o emoji)
             const emojiFinal = valorEscolhido === "NONE" ? "" : valorEscolhido;
 
-            // Atualiza os emojis no banco de acordo com o menu escolhido
             if (interaction.customId === "select_emoji_gel_normal") {
-                config.emojiGelNormal = emojiFinal; // Aplica no Gel Normal
-                config.emojiGelInfinito = emojiFinal; // Aplica no Gel Infinito também!
-            }
-            if (interaction.customId === "select_emoji_emul1") {
-                config.emojiEmul1 = emojiFinal; // Aplica no Emulador 1
-                config.emojiEmul2 = emojiFinal; // Aplica no Emulador 2 também!
-            }
-            if (interaction.customId === "select_emoji_sair") {
+                config.emojiGelNormal = emojiFinal;
+            } else if (interaction.customId === "select_emoji_gel_inf") {
+                config.emojiGelInfinito = emojiFinal;
+            } else if (interaction.customId === "select_emoji_emul1") {
+                config.emojiEmul1 = emojiFinal;
+            } else if (interaction.customId === "select_emoji_emul2") {
+                config.emojiEmul2 = emojiFinal;
+            } else if (interaction.customId === "select_emoji_sair") {
                 config.emojiSair = emojiFinal;
             }
 
             salvarConfig(config);
 
-            // Atualiza o Preview ao vivo após escolher o emoji
             const msgOriginal = interaction.message;
             if (msgOriginal && msgOriginal.embeds.length > 0) {
                 const embedAtualizado = new EmbedBuilder()
@@ -114,14 +109,13 @@ module.exports = async (interaction) => {
                 await msgOriginal.edit({ embeds: [embedAtualizado] }).catch(() => {});
             }
 
-            return await interaction.editReply({ content: `✅ Emoji atualizado com sucesso para: ${emojiFinal || "Nenhum"}` });
+            return await interaction.editReply({ content: `✅ Emoji atualizado com sucesso!` });
         }
 
         // --- TRATAMENTO DOS BOTÕES ---
         if (interaction.isButton()) {
             const { customId, user, guild, channel, message } = interaction;
 
-            // Botões de Modal
             if (customId === "editar_valor") {
                 const modal = new ModalBuilder().setCustomId("modal_editar_valor").setTitle("Editar Valor");
                 const input = new TextInputBuilder().setCustomId("input_valor").setLabel("Novo Valor").setStyle(TextInputStyle.Short).setRequired(true);
@@ -145,7 +139,6 @@ module.exports = async (interaction) => {
 
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
 
-            // Botão Ativar Misto
             if (customId === "ativar_misto") {
                 const config = pegarConfig();
                 config.modoMisto = !config.modoMisto;
@@ -173,7 +166,6 @@ module.exports = async (interaction) => {
                 return await interaction.editReply({ content: "✅ Configurações salvas e aplicadas com sucesso!" });
             }
 
-            // --- BOTÕES DE FILA ---
             if (customId.startsWith("entrar_") || customId === "sair_fila") {
                 const painelId = message.id;
                 let tipoFila = customId.replace("entrar_", "");
@@ -213,7 +205,6 @@ module.exports = async (interaction) => {
                 return await interaction.editReply({ content: `✅ <@${user.id}>, você entrou na fila!` });
             }
 
-            // --- RANKING ---
             if (customId === "btn_meu_perfil") {
                 const perfil = ranking.pegarPerfil(user.id);
                 const total = perfil.vitorias + perfil.derrotas;
@@ -239,5 +230,9 @@ module.exports = async (interaction) => {
         }
     } catch (err) {
         console.error("Erro geral na interação:", err);
+        // Evita que o bot trave por completo caso algo dê errado
+        if (!interaction.replied && !interaction.deferred) {
+            await interaction.reply({ content: "❌ Ocorreu um erro interno.", flags: MessageFlags.Ephemeral }).catch(() => {});
+        }
     }
 };
