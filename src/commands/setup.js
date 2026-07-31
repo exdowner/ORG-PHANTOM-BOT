@@ -28,58 +28,67 @@ module.exports = {
             )
             .setFooter({ text: "Só você pode ver esta mensagem • Ignorar mensagem" });
 
-        // --- LISTAS DE EMOJIS (MENUS SUSPENSOS) ---
+        // --- 4 MENUS DE EMOJIS (SEPARADOS) ---
         
-        // 1. Lista para escolher Emoji do GEL (Normal e Infinito)
-        const selectGel = new StringSelectMenuBuilder()
+        // 1. Gel Normal
+        const selectGelNormal = new StringSelectMenuBuilder()
             .setCustomId("select_emoji_gel_normal")
-            .setPlaceholder("Selecione o Emoji do Gel")
+            .setPlaceholder("Emoji do Gel Normal")
             .addOptions(
                 new StringSelectMenuOptionBuilder().setLabel("Gelo 🧊").setValue("🧊"),
-                new StringSelectMenuOptionBuilder().setLabel("Gelo Azul 🧊").setValue("🧊"),
                 new StringSelectMenuOptionBuilder().setLabel("Diamante 💎").setValue("💎"),
                 new StringSelectMenuOptionBuilder().setLabel("Bola de Neve ⛄").setValue("⛄"),
-                new StringSelectMenuOptionBuilder().setLabel("Sem Emoji (Limpar)").setValue("NONE")
+                new StringSelectMenuOptionBuilder().setLabel("Sem Emoji").setValue("NONE")
             );
 
-        // 2. Lista para escolher Emoji do EMULADOR (1 e 2)
-        const selectEmul = new StringSelectMenuBuilder()
+        // 2. Gel Infinito (NOVO E SEPARADO!)
+        const selectGelInf = new StringSelectMenuBuilder()
+            .setCustomId("select_emoji_gel_inf")
+            .setPlaceholder("Emoji do Gel Infinito")
+            .addOptions(
+                new StringSelectMenuOptionBuilder().setLabel("Infinito ♾️").setValue("♾️"),
+                new StringSelectMenuOptionBuilder().setLabel("Gelo 🧊").setValue("🧊"),
+                new StringSelectMenuOptionBuilder().setLabel("Diamante 💎").setValue("💎"),
+                new StringSelectMenuOptionBuilder().setLabel("Sem Emoji").setValue("NONE")
+            );
+
+        // 3. Emulador 1
+        const selectEmul1 = new StringSelectMenuBuilder()
             .setCustomId("select_emoji_emul1")
-            .setPlaceholder("Selecione o Emoji do Emulador")
+            .setPlaceholder("Emoji do Emulador 1")
             .addOptions(
                 new StringSelectMenuOptionBuilder().setLabel("Celular 📱").setValue("📱"),
-                new StringSelectMenuOptionBuilder().setLabel("Computador 💻").setValue("💻"),
                 new StringSelectMenuOptionBuilder().setLabel("Controle 🎮").setValue("🎮"),
                 new StringSelectMenuOptionBuilder().setLabel("Foguete 🚀").setValue("🚀"),
-                new StringSelectMenuOptionBuilder().setLabel("Sem Emoji (Limpar)").setValue("NONE")
+                new StringSelectMenuOptionBuilder().setLabel("Sem Emoji").setValue("NONE")
             );
 
-        // 3. Lista para escolher Emoji do SAIR (Leave)
-        const selectSair = new StringSelectMenuBuilder()
-            .setCustomId("select_emoji_sair")
-            .setPlaceholder("Selecione o Emoji de Sair")
+        // 4. Emulador 2 (NOVO E SEPARADO!)
+        const selectEmul2 = new StringSelectMenuBuilder()
+            .setCustomId("select_emoji_emul2")
+            .setPlaceholder("Emoji do Emulador 2")
             .addOptions(
-                new StringSelectMenuOptionBuilder().setLabel("Porta 🚪").setValue("🚪"),
-                new StringSelectMenuOptionBuilder().setLabel("Seta Sair ➡️").setValue("➡️"),
-                new StringSelectMenuOptionBuilder().setLabel("Mão 👋").setValue("👋"),
-                new StringSelectMenuOptionBuilder().setLabel("X Vermelho ❌").setValue("❌"),
-                new StringSelectMenuOptionBuilder().setLabel("Sem Emoji (Limpar)").setValue("NONE")
+                new StringSelectMenuOptionBuilder().setLabel("Computador 💻").setValue("💻"),
+                new StringSelectMenuOptionBuilder().setLabel("Celular 📱").setValue("📱"),
+                new StringSelectMenuOptionBuilder().setLabel("Controle 🎮").setValue("🎮"),
+                new StringSelectMenuOptionBuilder().setLabel("Sem Emoji").setValue("NONE")
             );
 
         // Criação das linhas com os menus
-        const row1 = new ActionRowBuilder().addComponents(selectGel);
-        const row2 = new ActionRowBuilder().addComponents(selectEmul);
-        const row3 = new ActionRowBuilder().addComponents(selectSair);
+        const row1 = new ActionRowBuilder().addComponents(selectGelNormal);
+        const row2 = new ActionRowBuilder().addComponents(selectGelInf);
+        const row3 = new ActionRowBuilder().addComponents(selectEmul1);
+        const row4 = new ActionRowBuilder().addComponents(selectEmul2);
 
         // Botão de Salvar e Ativar Misto
-        const row4 = new ActionRowBuilder().addComponents(
+        const row5 = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId("ativar_misto").setLabel("Ativar Misto").setEmoji("🔄").setStyle(ButtonStyle.Primary),
             new ButtonBuilder().setCustomId("salvar_config").setLabel("Salvar").setStyle(ButtonStyle.Success)
         );
 
         return await interaction.editReply({ 
             embeds: [embed], 
-            components: [row1, row2, row3, row4] 
+            components: [row1, row2, row3, row4, row5] 
         });
     }
 };
