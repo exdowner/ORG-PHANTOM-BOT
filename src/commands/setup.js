@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, MessageFlags, PermissionFlagsBits } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ButtonBuilder, ButtonStyle, MessageFlags, PermissionFlagsBits } = require("discord.js");
 const { pegarConfig } = require("../systems/config.js");
 
 module.exports = {
@@ -28,12 +28,12 @@ module.exports = {
             )
             .setFooter({ text: "Só você pode ver esta mensagem • Ignorar mensagem" });
 
-        // --- 4 MENUS DE EMOJIS (SEPARADOS) ---
-        
+        // --- MENUS DE EMOJIS (ORGANIZADOS EM 2 LINHAS PARA NÃO DAR ERRO) ---
+
         // 1. Gel Normal
         const selectGelNormal = new StringSelectMenuBuilder()
             .setCustomId("select_emoji_gel_normal")
-            .setPlaceholder("Emoji do Gel Normal")
+            .setPlaceholder("Emoji: Gel Normal")
             .addOptions(
                 new StringSelectMenuOptionBuilder().setLabel("Gelo 🧊").setValue("🧊"),
                 new StringSelectMenuOptionBuilder().setLabel("Diamante 💎").setValue("💎"),
@@ -41,10 +41,10 @@ module.exports = {
                 new StringSelectMenuOptionBuilder().setLabel("Sem Emoji").setValue("NONE")
             );
 
-        // 2. Gel Infinito (NOVO E SEPARADO!)
+        // 2. Gel Infinito (Junto com o Normal na mesma linha)
         const selectGelInf = new StringSelectMenuBuilder()
             .setCustomId("select_emoji_gel_inf")
-            .setPlaceholder("Emoji do Gel Infinito")
+            .setPlaceholder("Emoji: Gel Infinito")
             .addOptions(
                 new StringSelectMenuOptionBuilder().setLabel("Infinito ♾️").setValue("♾️"),
                 new StringSelectMenuOptionBuilder().setLabel("Gelo 🧊").setValue("🧊"),
@@ -52,10 +52,13 @@ module.exports = {
                 new StringSelectMenuOptionBuilder().setLabel("Sem Emoji").setValue("NONE")
             );
 
+        // Linha 1: Gel Normal + Gel Infinito
+        const rowEmojis1 = new ActionRowBuilder().addComponents(selectGelNormal, selectGelInf);
+
         // 3. Emulador 1
         const selectEmul1 = new StringSelectMenuBuilder()
             .setCustomId("select_emoji_emul1")
-            .setPlaceholder("Emoji do Emulador 1")
+            .setPlaceholder("Emoji: Emulador 1")
             .addOptions(
                 new StringSelectMenuOptionBuilder().setLabel("Celular 📱").setValue("📱"),
                 new StringSelectMenuOptionBuilder().setLabel("Controle 🎮").setValue("🎮"),
@@ -63,10 +66,10 @@ module.exports = {
                 new StringSelectMenuOptionBuilder().setLabel("Sem Emoji").setValue("NONE")
             );
 
-        // 4. Emulador 2 (NOVO E SEPARADO!)
+        // 4. Emulador 2 (Junto com o 1 na mesma linha)
         const selectEmul2 = new StringSelectMenuBuilder()
             .setCustomId("select_emoji_emul2")
-            .setPlaceholder("Emoji do Emulador 2")
+            .setPlaceholder("Emoji: Emulador 2")
             .addOptions(
                 new StringSelectMenuOptionBuilder().setLabel("Computador 💻").setValue("💻"),
                 new StringSelectMenuOptionBuilder().setLabel("Celular 📱").setValue("📱"),
@@ -74,21 +77,18 @@ module.exports = {
                 new StringSelectMenuOptionBuilder().setLabel("Sem Emoji").setValue("NONE")
             );
 
-        // Criação das linhas com os menus
-        const row1 = new ActionRowBuilder().addComponents(selectGelNormal);
-        const row2 = new ActionRowBuilder().addComponents(selectGelInf);
-        const row3 = new ActionRowBuilder().addComponents(selectEmul1);
-        const row4 = new ActionRowBuilder().addComponents(selectEmul2);
+        // Linha 2: Emulador 1 + Emulador 2
+        const rowEmojis2 = new ActionRowBuilder().addComponents(selectEmul1, selectEmul2);
 
-        // Botão de Salvar e Ativar Misto
-        const row5 = new ActionRowBuilder().addComponents(
+        // --- BOTÕES DE CONTROLE (Misto e Salvar) ---
+        const rowBotoes = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId("ativar_misto").setLabel("Ativar Misto").setEmoji("🔄").setStyle(ButtonStyle.Primary),
             new ButtonBuilder().setCustomId("salvar_config").setLabel("Salvar").setStyle(ButtonStyle.Success)
         );
 
         return await interaction.editReply({ 
             embeds: [embed], 
-            components: [row1, row2, row3, row4, row5] 
+            components: [rowEmojis1, rowEmojis2, rowBotoes] 
         });
     }
 };
