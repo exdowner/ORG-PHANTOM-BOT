@@ -77,7 +77,7 @@ module.exports = async (interaction) => {
             return;
         }
 
-        // --- SISTEMA DE FILAS (ATUALIZAÇÃO DO PAINEL PÚBLICO) ---
+        // --- SISTEMA DE FILAS (COM QUEBRAS DE LINHA CORRETAS) ---
         if (customId.startsWith("entrar_") || customId === "sair_fila") {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
@@ -99,7 +99,7 @@ module.exports = async (interaction) => {
                 });
             }
 
-            // Atualiza o painel público exibindo os nicks/menções dos jogadores nas filas
+            // Atualiza o painel público com as quebras de linha certas
             try {
                 const embedAntigo = message.embeds[0];
                 if (embedAntigo) {
@@ -110,13 +110,13 @@ module.exports = async (interaction) => {
                     const j1Emul = filas.jogadores("1emulador", painelId).map(j => `<@${j.id}>`).join(", ") || "Vazio";
                     const j2Emul = filas.jogadores("2emuladores", painelId).map(j => `<@${j.id}>`).join(", ") || "Vazio";
 
-                    const novaDescricao = `
-**Status da Fila Atualizada:**
-🧊 **Gel Normal:** ${jNormal}
-♾️ **Gel Infinito:** ${jInfinito}
-🟢 **1 Emulador:** ${j1Emul}
-🟢 **2 Emuladores:** ${j2Emul}
-                    `.trim();
+                    const novaDescricao = [
+                        `**Status da Fila Atualizada:**`,
+                        `🧊 **Gel Normal:** ${jNormal}`,
+                        `♾️ **Gel Infinito:** ${jInfinito}`,
+                        `🟢 **1 Emulador:** ${j1Emul}`,
+                        `🟢 **2 Emuladores:** ${j2Emul}`
+                    ].join("\n");
 
                     novoEmbed.setDescription(novaDescricao);
                     await message.edit({ embeds: [novoEmbed] }).catch(() => {});
