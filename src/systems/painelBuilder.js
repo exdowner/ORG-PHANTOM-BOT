@@ -28,18 +28,18 @@ module.exports = (config, fila1 = [], fila2 = []) => {
             new ButtonBuilder()
                 .setCustomId("entrar_1emulador")
                 .setLabel("1 Emulador")
-                .setEmoji(config.emojiEmul1 || "📱")
-                .setStyle(ButtonStyle.Success), // VERDE
+                .setEmoji(config.emojiEmul1 || "📱") // Se for null, usa 📱
+                .setStyle(ButtonStyle.Success),
             new ButtonBuilder()
                 .setCustomId("entrar_2emuladores")
                 .setLabel("2 Emuladores")
-                .setEmoji(config.emojiEmul2 || "💻")
-                .setStyle(ButtonStyle.Success), // VERDE
+                .setEmoji(config.emojiEmul2 || "💻") // Se for null, usa 💻
+                .setStyle(ButtonStyle.Success),
             new ButtonBuilder()
                 .setCustomId("sair_fila")
                 .setLabel("Sair")
-                .setEmoji(config.emojiSair || "🚪")
-                .setStyle(ButtonStyle.Danger) // VERMELHO
+                .setEmoji(config.emojiSair || "🚪") // Se for null, usa 🚪
+                .setStyle(ButtonStyle.Danger)
         );
     } else {
         // MODO GEL
@@ -51,18 +51,18 @@ module.exports = (config, fila1 = [], fila2 = []) => {
             new ButtonBuilder()
                 .setCustomId("entrar_gel_normal")
                 .setLabel("Gel Normal")
-                .setEmoji(config.emojiGelNormal)
-                .setStyle(ButtonStyle.Primary), // AZUL
+                .setEmoji(config.emojiGelNormal || "🧊") // Se for null, usa 🧊
+                .setStyle(ButtonStyle.Primary),
             new ButtonBuilder()
                 .setCustomId("entrar_gel_inf")
                 .setLabel("Gel Infinito")
-                .setEmoji(config.emojiGelInfinito)
-                .setStyle(ButtonStyle.Success), // VERDE
+                .setEmoji(config.emojiGelInfinito || "♾️") // Se for null, usa ♾️
+                .setStyle(ButtonStyle.Success),
             new ButtonBuilder()
                 .setCustomId("sair_fila")
                 .setLabel("Sair")
-                .setEmoji(config.emojiSair)
-                .setStyle(ButtonStyle.Danger) // VERMELHO
+                .setEmoji(config.emojiSair || "🚪") // Se for null, usa 🚪
+                .setStyle(ButtonStyle.Danger)
         );
     }
 
