@@ -14,6 +14,7 @@ const ranking = require("../systems/ranking.js");
 const filas = require("../systems/filas.js");
 const painelBuilder = require("../systems/painelBuilder.js");
 const { pegarConfig, salvarConfig } = require("../systems/config.js");
+const { enviarPreview } = require("../commands/setup.js"); 
 
 module.exports = async (interaction) => {
     // 1. COMANDOS SLASH
@@ -32,46 +33,33 @@ module.exports = async (interaction) => {
         return;
     }
 
-    // 2. SUBMISSÃO DE MODAIS (JANELAS DE DIGITAÇÃO DO EDITOR)
+    // 2. SUBMISSÃO DE MODAIS (EDITOR DE SETUP)
     if (interaction.isModalSubmit()) {
         const config = pegarConfig();
 
         if (interaction.customId === "modal_editar_valor") {
             config.valor = interaction.fields.getTextInputValue("input_valor");
-            salvarConfig(config);
-            return await interaction.reply({ content: `✅ Valor alterado com sucesso para: **${config.valor}**`, flags: MessageFlags.Ephemeral });
-        }
-
-        if (interaction.customId === "modal_editar_modo") {
+        } else if (interaction.customId === "modal_editar_modo") {
             config.modo = interaction.fields.getTextInputValue("input_modo");
-            salvarConfig(config);
-            return await interaction.reply({ content: `✅ Modo alterado com sucesso para: **${config.modo}**`, flags: MessageFlags.Ephemeral });
-        }
-
-        if (interaction.customId === "modal_editar_quantidade") {
+        } else if (interaction.customId === "modal_editar_quantidade") {
             const qtd = parseInt(interaction.fields.getTextInputValue("input_quantidade"));
-            if (isNaN(qtd) || qtd <= 0) {
-                return await interaction.reply({ content: "❌ Digite um número válido para a quantidade!", flags: MessageFlags.Ephemeral });
-            }
-            config.quantidade = qtd;
-            salvarConfig(config);
-            return await interaction.reply({ content: `✅ Quantidade alterada com sucesso para: **${config.quantidade}**`, flags: MessageFlags.Ephemeral });
+            if (!isNaN(qtd) && qtd > 0) config.quantidade = qtd;
+        } else if (interaction.customId === "modal_editar_emojis") {
+            config.emojiGelNormal = interaction.fields.getTextInputValue("input_emoji_normal") || config.emojiGelNormal;
+            config.emojiGelInfinito = interaction.fields.getTextInputValue("input_emoji_infinito") || config.emojiGelInfinito;
+            config.emojiSair = interaction.fields.getTextInputValue("input_emoji_sair") || config.emojiSair;
         }
 
-        if (interaction.customId === "modal_editar_emojis") {
-            config.emojiGelNormal = interaction.fields.getTextInputValue("input_emoji_normal") || "🧊";
-            config.emojiGelInfinito = interaction.fields.getTextInputValue("input_emoji_infinito") || "♾️";
-            config.emojiSair = interaction.fields.getTextInputValue("input_emoji_sair") || "🚪";
-            salvarConfig(config);
-            return await interaction.reply({ content: "✅ Emojis atualizados com sucesso!", flags: MessageFlags.Ephemeral });
-        }
+        salvarConfig(config);
+        await enviarPreview(interaction, config);
+        return;
     }
 
     // 3. INTERAÇÃO DE BOTÕES
     if (interaction.isButton()) {
         const { customId, user, guild, channel, message } = interaction;
 
-        // --- BOTÕES DO EDITOR DE SETUP (ABRINDO MODAIS) ---
+        // --- BOTÕES DO EDITOR DE SETUP ---
         if (customId === "editar_valor") {
             const modal = new ModalBuilder()
                 .setCustomId("modal_editar_valor")
@@ -139,7 +127,8 @@ module.exports = async (interaction) => {
             const config = pegarConfig();
             config.modoMisto = !(config.modoMisto === true || config.modoMisto === "true");
             salvarConfig(config);
-            return await interaction.editReply({ content: `🔄 Modo misto agora está: **${config.modoMisto ? "ATIVADO" : "DESATIVADO"}**` });
+            await enviarPreview(interaction, config);
+            return;
         }
 
         if (customId === "salvar_config") {
@@ -201,7 +190,7 @@ module.exports = async (interaction) => {
             return;
         }
 
-        // --- SISTEMA DE FILAS ---
+        // --- SISTEMA DE FILAS (ATUALIZAÇÃO PÚBLICA PARA O OPONENTE VER) ---
         if (customId.startsWith("entrar_") || customId === "sair_fila") {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
