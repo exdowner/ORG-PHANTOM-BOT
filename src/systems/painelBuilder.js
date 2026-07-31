@@ -19,10 +19,10 @@ module.exports = (config, fila1 = [], fila2 = []) => {
     const row = new ActionRowBuilder();
 
     // ==========================================
-    // EMOJIS FIXOS DO SERVIDOR (NÃO MEXA AQUI)
-    const emojiEmulador = ":bluestacks:";
-    const emojiGel = ":gloowall:";
-    const emojiSair = ":leave:";
+    // ✅ EMOJIS CORRETOS COM OS IDs QUE VOCÊ PASSOU
+    const emojiEmulador = "<:bluestacks:1532885656030806147>";
+    const emojiGel = "<:gloowall:1532885980422475868>";
+    const emojiSair = "<:leave:1532886068767228136>";
     // ==========================================
 
     // MODO MISTO
