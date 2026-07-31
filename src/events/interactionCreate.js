@@ -15,19 +15,12 @@ const ranking = require("../systems/ranking.js");
 const filas = require("../systems/filas.js");
 const painelBuilder = require("../systems/painelBuilder.js");
 
-// --- BLINDAGEM E PROTEÇÃO CONTRA ERROS DE IMPORTAÇÃO ---
 const configModule = require("../systems/config.js");
-console.log("🔍 Módulo config carregado com sucesso no interactionCreate");
-
 const pegarConfig = configModule.pegarConfig || (() => ({}));
-const salvarConfig = configModule.salvarConfig || (() => {
-    console.error("❌ ERRO CRÍTICO: salvarConfig não foi encontrada!");
-});
-// --------------------------------------------------------
+const salvarConfig = configModule.salvarConfig || (() => {});
 
 module.exports = async (interaction) => {
     try {
-        // 1. COMANDOS SLASH
         if (interaction.isChatInputCommand()) {
             const command = interaction.client.commands.get(interaction.commandName);
             if (!command) return;
@@ -43,7 +36,6 @@ module.exports = async (interaction) => {
             return;
         }
 
-        // 2. SUBMISSÃO DE MODAIS
         if (interaction.isModalSubmit()) {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
             const config = pegarConfig();
@@ -64,7 +56,6 @@ module.exports = async (interaction) => {
             });
         }
 
-        // 3. SELETOR DE EMOJIS (Menu Suspenso)
         if (interaction.isStringSelectMenu()) {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
             const config = pegarConfig();
@@ -81,7 +72,6 @@ module.exports = async (interaction) => {
             return await interaction.editReply({ content: `✅ Emoji atualizado com sucesso para: ${valorEscolhido}` });
         }
 
-        // 4. INTERAÇÃO DE BOTÕES
         if (interaction.isButton()) {
             const { customId, user, guild, channel, message } = interaction;
 
@@ -142,7 +132,6 @@ module.exports = async (interaction) => {
                 return await interaction.editReply({ content: "✅ Configurações salvas e aplicadas com sucesso!" });
             }
 
-            // --- SISTEMA DE FILAS ---
             if (customId.startsWith("entrar_") || customId === "sair_fila") {
                 const painelId = message.id;
                 let tipoFila = customId.replace("entrar_", "");
@@ -161,12 +150,12 @@ module.exports = async (interaction) => {
                 const lista2 = filas.jogadores(isMisto ? "2emuladores" : "infinito", painelId);
 
                 const tituloAtual = message.embeds[0]?.title || "";
-                const configMock = {
-                    modo: tituloAtual.split("|")[0]?.trim() || "X1",
-                    valor: tituloAtual.split("|")[1]?.trim() || "R$ 10,00",
-                    quantidade: 2,
-                    modoMisto: isMisto
-                };
+                
+                // ConfigMock atualizado para preservar todas as configurações salvas (emojis, quantidade, etc.)
+                const configMock = pegarConfig();
+                configMock.modo = tituloAtual.split("|")[0]?.trim() || configMock.modo;
+                configMock.valor = tituloAtual.split("|")[1]?.trim() || configMock.valor;
+                configMock.modoMisto = isMisto;
 
                 try {
                     if (typeof painelBuilder === "function") {
@@ -184,7 +173,6 @@ module.exports = async (interaction) => {
                 return await interaction.editReply({ content: `✅ <@${user.id}>, você entrou na fila!` });
             }
 
-            // --- RANKING ---
             if (customId === "btn_meu_perfil") {
                 const perfil = ranking.pegarPerfil(user.id);
                 const total = perfil.vitorias + perfil.derrotas;
