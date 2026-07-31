@@ -11,14 +11,10 @@ module.exports = {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
         const config = pegarConfig();
 
-        // CORREÇÃO DE SEGURANÇA
+        // CORREÇÃO DE SEGURANÇA: Se não tiver quantidade, define como 2
         if (config.quantidade === undefined || config.quantidade === null) {
             config.quantidade = 2;
         }
-        // Garante que os emojis tenham um padrão caso estejam vazios no banco
-        config.emojiGelNormal = config.emojiGelNormal || "🧊";
-        config.emojiGelInfinito = config.emojiGelInfinito || "♾️";
-        config.emojiSair = config.emojiSair || "🚪";
 
         // --- CONSTRUÇÃO DO PAINEL DE PREVIEW ---
         const embed = new EmbedBuilder()
@@ -33,19 +29,31 @@ module.exports = {
             )
             .setFooter({ text: "Só você pode ver esta mensagem • Ignorar mensagem" });
 
-        // LINHA 1
+        // --- LINHA 1: DADOS BÁSICOS ---
         const row1 = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId("editar_valor").setLabel("Valor").setStyle(ButtonStyle.Primary),
             new ButtonBuilder().setCustomId("editar_modo").setLabel("Modo").setStyle(ButtonStyle.Secondary),
             new ButtonBuilder().setCustomId("editar_quantidade").setLabel("Quantidade").setEmoji("👤").setStyle(ButtonStyle.Secondary)
         );
 
-        // LINHA 2 (AQUI ESTÁ O BOTÃO DE EMOJI CORRIGIDO)
+        // --- LINHA 2: EMOJIS (Apenas 3 botões, do jeito que você pediu) ---
         const row2 = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
-                .setCustomId("escolher_emoji_gel_normal") // Esse ID ativa o menu de seleção do seu backend
-                .setLabel("Emojis")
-                .setStyle(ButtonStyle.Secondary),
+                .setCustomId("escolher_emoji_gel_normal") // Muda GEL Normal e Infinito
+                .setLabel("Emoji Gel")
+                .setStyle(ButtonStyle.Success),
+            new ButtonBuilder()
+                .setCustomId("escolher_emoji_emul1") // Muda Emulador 1 e 2
+                .setLabel("Emoji Emul")
+                .setStyle(ButtonStyle.Success),
+            new ButtonBuilder()
+                .setCustomId("escolher_emoji_sair") // Muda o botão Sair
+                .setLabel("Emoji Sair")
+                .setStyle(ButtonStyle.Danger)
+        );
+
+        // --- LINHA 3: MISTO E SALVAR ---
+        const row3 = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
                 .setCustomId("ativar_misto")
                 .setLabel("Ativar Misto")
@@ -57,6 +65,9 @@ module.exports = {
                 .setStyle(ButtonStyle.Success)
         );
 
-        return await interaction.editReply({ embeds: [embed], components: [row1, row2] });
+        return await interaction.editReply({ 
+            embeds: [embed], 
+            components: [row1, row2, row3] 
+        });
     }
 };
