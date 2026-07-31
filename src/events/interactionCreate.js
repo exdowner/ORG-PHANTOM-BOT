@@ -1,4 +1,15 @@
-const { EmbedBuilder, MessageFlags, PermissionFlagsBits, ChannelType, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+const { 
+    EmbedBuilder, 
+    MessageFlags, 
+    PermissionFlagsBits, 
+    ChannelType, 
+    ActionRowBuilder, 
+    ButtonBuilder, 
+    ButtonStyle, 
+    ModalBuilder, 
+    TextInputBuilder, 
+    TextInputStyle 
+} = require("discord.js");
 const ranking = require("../systems/ranking.js");
 const filas = require("../systems/filas.js");
 const painelBuilder = require("../systems/painelBuilder.js");
@@ -21,29 +32,119 @@ module.exports = async (interaction) => {
         return;
     }
 
-    // 2. INTERAÇÃO DE BOTÕES
+    // 2. SUBMISSÃO DE MODAIS (JANELAS DE DIGITAÇÃO DO EDITOR)
+    if (interaction.isModalSubmit()) {
+        const config = pegarConfig();
+
+        if (interaction.customId === "modal_editar_valor") {
+            config.valor = interaction.fields.getTextInputValue("input_valor");
+            salvarConfig(config);
+            return await interaction.reply({ content: `✅ Valor alterado com sucesso para: **${config.valor}**`, flags: MessageFlags.Ephemeral });
+        }
+
+        if (interaction.customId === "modal_editar_modo") {
+            config.modo = interaction.fields.getTextInputValue("input_modo");
+            salvarConfig(config);
+            return await interaction.reply({ content: `✅ Modo alterado com sucesso para: **${config.modo}**`, flags: MessageFlags.Ephemeral });
+        }
+
+        if (interaction.customId === "modal_editar_quantidade") {
+            const qtd = parseInt(interaction.fields.getTextInputValue("input_quantidade"));
+            if (isNaN(qtd) || qtd <= 0) {
+                return await interaction.reply({ content: "❌ Digite um número válido para a quantidade!", flags: MessageFlags.Ephemeral });
+            }
+            config.quantidade = qtd;
+            salvarConfig(config);
+            return await interaction.reply({ content: `✅ Quantidade alterada com sucesso para: **${config.quantidade}**`, flags: MessageFlags.Ephemeral });
+        }
+
+        if (interaction.customId === "modal_editar_emojis") {
+            config.emojiGelNormal = interaction.fields.getTextInputValue("input_emoji_normal") || "🧊";
+            config.emojiGelInfinito = interaction.fields.getTextInputValue("input_emoji_infinito") || "♾️";
+            config.emojiSair = interaction.fields.getTextInputValue("input_emoji_sair") || "🚪";
+            salvarConfig(config);
+            return await interaction.reply({ content: "✅ Emojis atualizados com sucesso!", flags: MessageFlags.Ephemeral });
+        }
+    }
+
+    // 3. INTERAÇÃO DE BOTÕES
     if (interaction.isButton()) {
         const { customId, user, guild, channel, message } = interaction;
 
-        // --- BOTÕES DO EDITOR DE SETUP ---
-        if (["editar_valor", "editar_modo", "editar_quantidade", "editar_emojis", "ativar_misto", "salvar_config"].includes(customId)) {
+        // --- BOTÕES DO EDITOR DE SETUP (ABRINDO MODAIS) ---
+        if (customId === "editar_valor") {
+            const modal = new ModalBuilder()
+                .setCustomId("modal_editar_valor")
+                .setTitle("Editar Valor do X1/Partida");
+            
+            const input = new TextInputBuilder()
+                .setCustomId("input_valor")
+                .setLabel("Novo Valor (Ex: R$ 10,00 ou 500 gemas)")
+                .setStyle(TextInputStyle.Short)
+                .setRequired(true);
+
+            modal.addComponents(new ActionRowBuilder().addComponents(input));
+            return await interaction.showModal(modal);
+        }
+
+        if (customId === "editar_modo") {
+            const modal = new ModalBuilder()
+                .setCustomId("modal_editar_modo")
+                .setTitle("Editar Modo de Jogo");
+            
+            const input = new TextInputBuilder()
+                .setCustomId("input_modo")
+                .setLabel("Novo Modo (Ex: Mobile, X1 dos Crias)")
+                .setStyle(TextInputStyle.Short)
+                .setRequired(true);
+
+            modal.addComponents(new ActionRowBuilder().addComponents(input));
+            return await interaction.showModal(modal);
+        }
+
+        if (customId === "editar_quantidade") {
+            const modal = new ModalBuilder()
+                .setCustomId("modal_editar_quantidade")
+                .setTitle("Editar Quantidade de Jogadores");
+            
+            const input = new TextInputBuilder()
+                .setCustomId("input_quantidade")
+                .setLabel("Quantidade por time (Ex: 2 para X2)")
+                .setStyle(TextInputStyle.Short)
+                .setRequired(true);
+
+            modal.addComponents(new ActionRowBuilder().addComponents(input));
+            return await interaction.showModal(modal);
+        }
+
+        if (customId === "editar_emojis") {
+            const modal = new ModalBuilder()
+                .setCustomId("modal_editar_emojis")
+                .setTitle("Editar Emojis do Painel");
+            
+            const inputNormal = new TextInputBuilder().setCustomId("input_emoji_normal").setLabel("Emoji Gel Normal / 1 Emul").setStyle(TextInputStyle.Short).setRequired(false);
+            const inputInf = new TextInputBuilder().setCustomId("input_emoji_infinito").setLabel("Emoji Gel Infinito / 2 Emul").setStyle(TextInputStyle.Short).setRequired(false);
+            const inputSair = new TextInputBuilder().setCustomId("input_emoji_sair").setLabel("Emoji Botão Sair").setStyle(TextInputStyle.Short).setRequired(false);
+
+            modal.addComponents(
+                new ActionRowBuilder().addComponents(inputNormal),
+                new ActionRowBuilder().addComponents(inputInf),
+                new ActionRowBuilder().addComponents(inputSair)
+            );
+            return await interaction.showModal(modal);
+        }
+
+        if (customId === "ativar_misto") {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral });
             const config = pegarConfig();
+            config.modoMisto = !(config.modoMisto === true || config.modoMisto === "true");
+            salvarConfig(config);
+            return await interaction.editReply({ content: `🔄 Modo misto agora está: **${config.modoMisto ? "ATIVADO" : "DESATIVADO"}**` });
+        }
 
-            if (customId === "ativar_misto") {
-                config.modoMisto = !(config.modoMisto === true || config.modoMisto === "true");
-                salvarConfig(config);
-            }
-
-            if (customId === "salvar_config") {
-                // Se o comando setup tiver a função de enviar preview, podemos atualizar a mensagem com sucesso
-                return await interaction.editReply({ content: "✅ Configurações salvas com sucesso!" });
-            }
-
-            // Exemplo de resposta para os botões de edição do editor
-            return await interaction.editReply({ 
-                content: `⚙️ O botão **${customId.replace("editar_", "").toUpperCase()}** foi clicado! (Para alterar valores específicos, utilize os comandos de configuração correspondentes ou ajuste no sistema).` 
-            });
+        if (customId === "salvar_config") {
+            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+            return await interaction.editReply({ content: "✅ Configurações salvas e aplicadas com sucesso!" });
         }
 
         // --- TICKET DE SUPORTE ---
