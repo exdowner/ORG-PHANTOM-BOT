@@ -1,6 +1,7 @@
 const { EmbedBuilder, MessageFlags, PermissionFlagsBits, ChannelType, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const ranking = require("../systems/ranking.js");
 const filas = require("../systems/filas.js");
+const criarPainelEmbed = require("../systems/painelBuilder.js"); // (Ajuste o caminho se o seu arquivo do painel estiver em outra pasta, ex: ../components/ ou ../utils/)
 
 module.exports = async (interaction) => {
     // 1. COMANDOS SLASH
@@ -77,56 +78,58 @@ module.exports = async (interaction) => {
             return;
         }
 
-        // --- SISTEMA DE FILAS (COM QUEBRAS DE LINHA CORRETAS) ---
+        // --- SISTEMA DE FILAS COMPLETO E SINCRONIZADO ---
         if (customId.startsWith("entrar_") || customId === "sair_fila") {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
             const painelId = message.id;
 
+            // Traduz os botões do Discord para as chaves exatas do seu systems/filas.js
+            let tipoFila = customId.replace("entrar_", "");
+            if (tipoFila === "gel_normal") tipoFila = "normal";
+            if (tipoFila === "gel_inf") tipoFila = "infinito";
+
             if (customId === "sair_fila") {
                 filas.sairFila(painelId, user);
-                return await interaction.editReply({
-                    content: `🚪 <@${user.id}>, você saiu de todas as filas deste painel com sucesso!`
-                });
+            } else {
+                const resultado = filas.entrarFila(painelId, tipoFila, user);
+                if (!resultado.ok) {
+                    return await interaction.editReply({ content: resultado.motivo });
+                }
             }
 
-            const tipoFila = customId.replace("entrar_", "");
-            const resultado = filas.entrarFila(painelId, tipoFila, user);
+            // Puxa as listas atualizadas de jogadores da memória
+            const f1 = filas.jogadores(tipoFila === "1emulador" || tipoFila === "normal" ? tipoFila : (tipoFila === "2emuladores" ? "2emuladores" : "normal"), painelId);
+            // Pega as duas filas correspondentes dependendo se é misto ou mobile
+            const isMisto = tipoFila.includes("emulador");
+            const lista1 = filas.jogadores(isMisto ? "1emulador" : "normal", painelId);
+            const lista2 = filas.jogadores(isMisto ? "2emuladores" : "infinito", painelId);
 
-            if (!resultado.ok) {
-                return await interaction.editReply({
-                    content: resultado.motivo
-                });
-            }
+            // Simula uma config básica baseada no título atual da mensagem para reconstruir o layout original perfeito
+            const tituloAtual = message.embeds[0]?.title || "";
+            const configMock = {
+                modo: tituloAtual.split("|")[0]?.trim() || "X1",
+                valor: tituloAtual.split("|")[1]?.trim() || "R$ 10,00",
+                quantidade: 2,
+                modoMisto: isMisto
+            };
 
-            // Atualiza o painel público com as quebras de linha certas
+            // Atualiza o painel público no canal para todo mundo ver o oponente na fila!
             try {
-                const embedAntigo = message.embeds[0];
-                if (embedAntigo) {
-                    const novoEmbed = EmbedBuilder.from(embedAntigo);
-                    
-                    const jNormal = filas.jogadores("normal", painelId).map(j => `<@${j.id}>`).join(", ") || "Vazio";
-                    const jInfinito = filas.jogadores("infinito", painelId).map(j => `<@${j.id}>`).join(", ") || "Vazio";
-                    const j1Emul = filas.jogadores("1emulador", painelId).map(j => `<@${j.id}>`).join(", ") || "Vazio";
-                    const j2Emul = filas.jogadores("2emuladores", painelId).map(j => `<@${j.id}>`).join(", ") || "Vazio";
-
-                    const novaDescricao = [
-                        `**Status da Fila Atualizada:**`,
-                        `🧊 **Gel Normal:** ${jNormal}`,
-                        `♾️ **Gel Infinito:** ${jInfinito}`,
-                        `🟢 **1 Emulador:** ${j1Emul}`,
-                        `🟢 **2 Emuladores:** ${j2Emul}`
-                    ].join("\n");
-
-                    novoEmbed.setDescription(novaDescricao);
-                    await message.edit({ embeds: [novoEmbed] }).catch(() => {});
+                if (typeof criarPainelEmbed === "function") {
+                    const novoPainel = criarPainelEmbed(configMock, lista1, lista2);
+                    await message.edit(novoPainel).catch(() => {});
                 }
             } catch (err) {
-                console.error("Erro ao atualizar o painel público:", err);
+                console.error("Erro ao atualizar painel público:", err);
+            }
+
+            if (customId === "sair_fila") {
+                return await interaction.editReply({ content: `🚪 <@${user.id}>, você saiu de todas as filas com sucesso!` });
             }
 
             return await interaction.editReply({
-                content: `✅ <@${user.id}>, você entrou na fila **${tipoFila.toUpperCase()}** com sucesso!`
+                content: `✅ <@${user.id}>, você entrou na fila com sucesso!`
             });
         }
 
