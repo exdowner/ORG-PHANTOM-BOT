@@ -11,12 +11,10 @@ module.exports = {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
         const config = pegarConfig();
 
-        // Segurança para não mostrar undefined na quantidade
         if (config.quantidade === undefined || config.quantidade === null) {
             config.quantidade = 2;
         }
 
-        // O Embed iguaaaalzinho ao da sua foto
         const embed = new EmbedBuilder()
             .setColor("#2b2d31")
             .setTitle(`ORG PHANTOM | Editor (Preview ao Vivo)`)
@@ -29,23 +27,35 @@ module.exports = {
             )
             .setFooter({ text: "Só você pode ver esta mensagem • Ignorar mensagem" });
 
-        // LINHA 1: Botões principais (Valor, Modo, Quantidade)
+        // LINHA 1: Valor, Modo, Quantidade
         const row1 = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId("editar_valor").setLabel("Valor").setStyle(ButtonStyle.Primary),
             new ButtonBuilder().setCustomId("editar_modo").setLabel("Modo").setStyle(ButtonStyle.Secondary),
             new ButtonBuilder().setCustomId("editar_quantidade").setLabel("Quantidade").setEmoji("👤").setStyle(ButtonStyle.Secondary)
         );
 
-        // LINHA 2: Botões de Emojis Personalizados
+        // LINHA 2: Emoji Gel Normal e Gel Infinito
         const row2 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId("escolher_emoji_gel_normal").setLabel("Emojis").setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId("escolher_emoji_gel_normal").setLabel("Emoji Gel Normal").setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId("escolher_emoji_gel_inf").setLabel("Emoji Gel Infinito").setStyle(ButtonStyle.Success)
+        );
+
+        // LINHA 3: Emoji Emulador 1 e Emulador 2
+        const row3 = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId("escolher_emoji_emul1").setLabel("Emoji Emulador 1").setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId("escolher_emoji_emul2").setLabel("Emoji Emulador 2").setStyle(ButtonStyle.Success)
+        );
+
+        // LINHA 4: Emoji Sair, Ativar Misto e Salvar
+        const row4 = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId("escolher_emoji_sair").setLabel("Emoji Sair").setStyle(ButtonStyle.Danger),
             new ButtonBuilder().setCustomId("ativar_misto").setLabel("Ativar Misto").setEmoji("🔄").setStyle(ButtonStyle.Primary),
             new ButtonBuilder().setCustomId("salvar_config").setLabel("Salvar").setStyle(ButtonStyle.Success)
         );
 
         return await interaction.editReply({ 
             embeds: [embed], 
-            components: [row1, row2] 
+            components: [row1, row2, row3, row4] 
         });
     }
 };

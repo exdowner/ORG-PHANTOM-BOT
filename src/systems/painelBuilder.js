@@ -2,7 +2,7 @@ const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("
 
 module.exports = (config, fila1 = [], fila2 = []) => {
     const qtd = config.quantidade || 2;
-    const titulo = `${config.modo || "Mobile"} | ${config.valor || "2,00"}`;
+    const titulo = `${config.modo || "Mobile"} | ${config.valor || "5,00"}`;
     const urlImagem = "https://media.discordapp.net/attachments/1523200272158036008/1531973873116123276/Design_sem_nome.png";
 
     const formatarFila = (fila) => {

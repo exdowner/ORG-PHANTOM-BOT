@@ -19,7 +19,6 @@ const salvarConfig = configModule.salvarConfig || (() => ({}));
 
 module.exports = async (interaction) => {
     try {
-        // Comandos Slash
         if (interaction.isChatInputCommand()) {
             const command = interaction.client.commands.get(interaction.commandName);
             if (!command) return;
@@ -34,7 +33,7 @@ module.exports = async (interaction) => {
             return;
         }
 
-        // Modais (Editar Valor, Modo, Quantidade)
+        // --- MODAIS (Preview ao Vivo) ---
         if (interaction.isModalSubmit()) {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
             const config = pegarConfig();
@@ -50,7 +49,6 @@ module.exports = async (interaction) => {
 
             salvarConfig(config);
 
-            // Atualizar o Preview na tela em Tempo Real
             const msgOriginal = interaction.message;
             if (msgOriginal && msgOriginal.embeds.length > 0) {
                 const embedAtualizado = new EmbedBuilder()
@@ -72,7 +70,7 @@ module.exports = async (interaction) => {
             });
         }
 
-        // Menus de Seleção de Emojis (Personalizados do Servidor)
+        // --- MENUS DE EMOJIS (AQUI ESTÃO OS 5 SEPARADOS) ---
         if (interaction.isStringSelectMenu()) {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
             const config = pegarConfig();
@@ -89,11 +87,10 @@ module.exports = async (interaction) => {
             return await interaction.editReply({ content: `✅ Emoji atualizado com sucesso!` });
         }
 
-        // Botões
+        // --- BOTÕES ---
         if (interaction.isButton()) {
             const { customId, user, guild, channel, message } = interaction;
 
-            // Abrir Modais
             if (customId === "editar_valor") {
                 const modal = new ModalBuilder().setCustomId("modal_editar_valor").setTitle("Editar Valor");
                 const input = new TextInputBuilder().setCustomId("input_valor").setLabel("Novo Valor").setStyle(TextInputStyle.Short).setRequired(true);
@@ -115,7 +112,7 @@ module.exports = async (interaction) => {
                 return await interaction.showModal(modal);
             }
 
-            // Abrir Lista de Emojis Personalizados do Servidor
+            // --- BOTÕES QUE ABREM OS 5 MENUS DE EMOJIS DO SERVIDOR ---
             if (customId.startsWith("escolher_emoji_")) {
                 const tipo = customId.replace("escolher_emoji_", "");
                 const emojisDoServidor = guild.emojis.cache.first(25);
@@ -141,13 +138,11 @@ module.exports = async (interaction) => {
 
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
 
-            // Ativar Misto
             if (customId === "ativar_misto") {
                 const config = pegarConfig();
                 config.modoMisto = !config.modoMisto;
                 salvarConfig(config);
 
-                // Atualizar Preview
                 const msgOriginal = interaction.message;
                 if (msgOriginal && msgOriginal.embeds.length > 0) {
                     const embedAtualizado = new EmbedBuilder()
@@ -166,12 +161,11 @@ module.exports = async (interaction) => {
                 return await interaction.editReply({ content: `🔄 Modo misto agora está: **${config.modoMisto ? "ATIVADO" : "DESATIVADO"}**` });
             }
 
-            // Salvar
             if (customId === "salvar_config") {
                 return await interaction.editReply({ content: "✅ Configurações salvas e aplicadas com sucesso!" });
             }
 
-            // Lógica das Filas (Entrar/Sair) - Mantendo o sistema original intacto
+            // --- FILAS ---
             if (customId.startsWith("entrar_") || customId === "sair_fila") {
                 const painelId = message.id;
                 let tipoFila = customId.replace("entrar_", "");
@@ -211,7 +205,6 @@ module.exports = async (interaction) => {
                 return await interaction.editReply({ content: `✅ <@${user.id}>, você entrou na fila!` });
             }
 
-            // Perfil e Ranking
             if (customId === "btn_meu_perfil") {
                 const perfil = ranking.pegarPerfil(user.id);
                 const total = perfil.vitorias + perfil.derrotas;
