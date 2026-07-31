@@ -18,21 +18,12 @@ module.exports = (config, fila1 = [], fila2 = []) => {
 
     const row = new ActionRowBuilder();
 
-    // MODO MISTO (EMULADORES)
+    // SE O BANCO DE DADOS TIVER MODO MISTO ATIVADO
     if (config.modoMisto === true) {
         embed.addFields(
-            {
-                name: `1 Emulador (${fila1.length}/${qtd})`,
-                value: formatarFila(fila1),
-                inline: false
-            },
-            {
-                name: `2 Emuladores (${fila2.length}/${qtd})`,
-                value: formatarFila(fila2),
-                inline: false
-            }
+            { name: `1 Emulador (${fila1.length}/${qtd})`, value: formatarFila(fila1), inline: false },
+            { name: `2 Emuladores (${fila2.length}/${qtd})`, value: formatarFila(fila2), inline: false }
         );
-
         row.addComponents(
             new ButtonBuilder()
                 .setCustomId("entrar_1emulador")
@@ -52,21 +43,11 @@ module.exports = (config, fila1 = [], fila2 = []) => {
                 .setEmoji(config.emojiSair || "🚪")
                 .setStyle(ButtonStyle.Danger)
         );
-    }
-
-    // MODO GEL
-    else {
+    } else {
+        // MODO GEL
         embed.addFields(
-            {
-                name: `Gel Normal (${fila1.length}/${qtd})`,
-                value: formatarFila(fila1),
-                inline: false
-            },
-            {
-                name: `Gel Infinito (${fila2.length}/${qtd})`,
-                value: formatarFila(fila2),
-                inline: false
-            }
+            { name: `Gel Normal (${fila1.length}/${qtd})`, value: formatarFila(fila1), inline: false },
+            { name: `Gel Infinito (${fila2.length}/${qtd})`, value: formatarFila(fila2), inline: false }
         );
 
         row.addComponents(
@@ -90,8 +71,5 @@ module.exports = (config, fila1 = [], fila2 = []) => {
         );
     }
 
-    return {
-        embeds: [embed],
-        components: [row]
-    };
+    return { embeds: [embed], components: [row] };
 };
