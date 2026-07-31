@@ -7,6 +7,7 @@ const {
     ModalBuilder, 
     TextInputBuilder, 
     TextInputStyle,
+    StringSelectMenuBuilder,
     ChannelType,
     PermissionFlagsBits
 } = require("discord.js");
@@ -34,6 +35,7 @@ module.exports = async (interaction) => {
             return;
         }
 
+        // --- MODAIS ---
         if (interaction.isModalSubmit()) {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
             const config = pegarConfig();
@@ -60,7 +62,27 @@ module.exports = async (interaction) => {
             return await interaction.editReply({ content: "✅ Configuração alterada!" });
         }
 
+        // --- MENUS DE EMOJIS ---
+        if (interaction.isStringSelectMenu()) {
+            await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
+            const config = pegarConfig();
+            const valorEscolhido = interaction.values[0];
+
+            if (interaction.customId === "select_emoji_gel_normal") config.emojiGelNormal = valorEscolhido;
+            if (interaction.customId === "select_emoji_gel_inf") config.emojiGelInfinito = valorEscolhido;
+            if (interaction.customId === "select_emoji_emul1") config.emojiEmul1 = valorEscolhido;
+            if (interaction.customId === "select_emoji_emul2") config.emojiEmul2 = valorEscolhido;
+            if (interaction.customId === "select_emoji_sair") config.emojiSair = valorEscolhido;
+
+            salvarConfig(config);
+            return await interaction.editReply({ content: `✅ Emoji atualizado!` });
+        }
+
+        // --- BOTÕES ---
         if (interaction.isButton()) {
+            // 🔥 LINHA MÁGICA: Sem isso o erro 404/InteractionNotReplied aparece
+            await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
+
             const { customId, user, guild, channel, message } = interaction;
 
             if (customId === "editar_nome_painel") {
@@ -108,6 +130,29 @@ module.exports = async (interaction) => {
                 return await interaction.editReply({ content: "✅ Salvo!" });
             }
 
+            if (customId.startsWith("escolher_emoji_")) {
+                const tipo = customId.replace("escolher_emoji_", "");
+                const emojisDoServidor = guild.emojis.cache.first(25);
+
+                if (!emojisDoServidor.length) {
+                    return await interaction.editReply({ content: "⚠️ Este servidor não possui emojis personalizados!" });
+                }
+
+                const selectMenu = new StringSelectMenuBuilder()
+                    .setCustomId(`select_emoji_${tipo}`)
+                    .setPlaceholder("Selecione um emoji do servidor")
+                    .addOptions(
+                        emojisDoServidor.map(e => ({
+                            label: e.name,
+                            value: `<:${e.name}:${e.id}>`,
+                            emoji: e.id
+                        }))
+                    );
+
+                const row = new ActionRowBuilder().addComponents(selectMenu);
+                return await interaction.editReply({ content: "Escolha o emoji abaixo:", components: [row] });
+            }
+
             if (customId.startsWith("entrar_") || customId === "sair_fila") {
                 const painelId = message.id;
                 let tipoFila = customId.replace("entrar_", "");
@@ -139,6 +184,11 @@ module.exports = async (interaction) => {
                     modo: configReal.modo || "Mobile",
                     valor: configReal.valor || "20,00",
                     nomePainel: configReal.nomePainel || "PHANTOM",
+                    emojiGelNormal: configReal.emojiGelNormal,
+                    emojiGelInfinito: configReal.emojiGelInfinito,
+                    emojiEmul1: configReal.emojiEmul1,
+                    emojiEmul2: configReal.emojiEmul2,
+                    emojiSair: configReal.emojiSair,
                     quantidade: configReal.quantidade || 2
                 };
 
@@ -189,7 +239,6 @@ module.exports = async (interaction) => {
             }
 
             if (customId === "aceitar_partida") {
-                await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
                 const guild = interaction.guild;
 
                 try {
@@ -203,7 +252,6 @@ module.exports = async (interaction) => {
                     await interaction.editReply({ content: `✅ **PARTIDA CONFIRMADA!** Canal de texto criado: <#${novoCanal.id}>` });
                     await novoCanal.send(`👋 Bem-vindos à partida!`);
 
-                    // Limpar fila
                     const mensagemPainel = message; 
                     const painelId = mensagemPainel.id;
                     filas.sairFila(painelId, user);
@@ -229,7 +277,6 @@ module.exports = async (interaction) => {
             }
 
             if (customId === "cancelar_partida") {
-                await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
                 await interaction.editReply({ content: `❌ Partida cancelada pelo jogador.` });
             }
 
