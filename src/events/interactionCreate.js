@@ -77,7 +77,7 @@ module.exports = async (interaction) => {
             return;
         }
 
-        // --- SISTEMA DE FILAS (COM TIMEOUT PREVIDO VIA DEFERREPLY) ---
+        // --- SISTEMA DE FILAS (COM TIMEOUT PREVIDO E ATUALIZAÇÃO PÚBLICA) ---
         if (customId.startsWith("entrar_") || customId === "sair_fila") {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
@@ -97,6 +97,29 @@ module.exports = async (interaction) => {
                 return await interaction.editReply({
                     content: resultado.motivo
                 });
+            }
+
+            // Tenta atualizar o painel público do canal com os novos jogadores
+            try {
+                const listaJogadores = filas.jogadores(tipoFila, painelId);
+                const descJogadores = listaJogadores.length > 0 
+                    ? listaJogadores.map(j => `<@${j.id}>`).join("\n") 
+                    : "Nenhum jogador na fila.";
+
+                const embedAntigo = message.embeds[0];
+                if (embedAntigo) {
+                    const novoEmbed = EmbedBuilder.from(embedAntigo);
+                    const fields = novoEmbed.data.fields || [];
+                    const campoIndex = fields.findIndex(f => f.name.toLowerCase().includes(tipoFila.toLowerCase()));
+                    
+                    if (campoIndex !== -1) {
+                        fields[campoIndex].value = descJogadores;
+                        novoEmbed.setFields(fields);
+                        await message.edit({ embeds: [novoEmbed] }).catch(() => {});
+                    }
+                }
+            } catch (err) {
+                console.error("Erro ao atualizar painel público:", err);
             }
 
             return await interaction.editReply({
