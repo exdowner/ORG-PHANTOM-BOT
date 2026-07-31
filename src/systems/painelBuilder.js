@@ -18,79 +18,60 @@ module.exports = (config, fila1 = [], fila2 = []) => {
 
     const row = new ActionRowBuilder();
 
+    // ==========================================
+    // EMOJIS FIXOS DO SERVIDOR (NÃO MEXA AQUI)
+    const emojiEmulador = ":bluestacks:";
+    const emojiGel = ":gloowall:";
+    const emojiSair = ":leave:";
+    // ==========================================
+
     // MODO MISTO
     if (config.modoMisto === true) {
         embed.addFields(
-            {
-                name: `1 Emulador (${fila1.length}/${qtd})`,
-                value: formatarFila(fila1),
-                inline: false
-            },
-            {
-                name: `2 Emuladores (${fila2.length}/${qtd})`,
-                value: formatarFila(fila2),
-                inline: false
-            }
+            { name: `1 Emulador (${fila1.length}/${qtd})`, value: formatarFila(fila1), inline: false },
+            { name: `2 Emuladores (${fila2.length}/${qtd})`, value: formatarFila(fila2), inline: false }
         );
-
         row.addComponents(
             new ButtonBuilder()
                 .setCustomId("entrar_1emulador")
                 .setLabel("1 Emulador")
-                .setEmoji(config.emojiEmul1 || "📱")
+                .setEmoji(emojiEmulador)
                 .setStyle(ButtonStyle.Success),
-
             new ButtonBuilder()
                 .setCustomId("entrar_2emuladores")
                 .setLabel("2 Emuladores")
-                .setEmoji(config.emojiEmul2 || "💻")
+                .setEmoji(emojiEmulador)
                 .setStyle(ButtonStyle.Success),
-
             new ButtonBuilder()
                 .setCustomId("sair_fila")
                 .setLabel("Sair")
-                .setEmoji(config.emojiSair || "🚪")
+                .setEmoji(emojiSair)
                 .setStyle(ButtonStyle.Danger)
         );
-
     } else {
         // MODO GEL
         embed.addFields(
-            {
-                name: `Gel Normal (${fila1.length}/${qtd})`,
-                value: formatarFila(fila1),
-                inline: false
-            },
-            {
-                name: `Gel Infinito (${fila2.length}/${qtd})`,
-                value: formatarFila(fila2),
-                inline: false
-            }
+            { name: `Gel Normal (${fila1.length}/${qtd})`, value: formatarFila(fila1), inline: false },
+            { name: `Gel Infinito (${fila2.length}/${qtd})`, value: formatarFila(fila2), inline: false }
         );
-
         row.addComponents(
             new ButtonBuilder()
                 .setCustomId("entrar_gel_normal")
                 .setLabel("Gel Normal")
-                .setEmoji(config.emojiGelNormal || "🧊")
-                .setStyle(ButtonStyle.Primary), // 🔵 Azul
-
+                .setEmoji(emojiGel)
+                .setStyle(ButtonStyle.Primary),
             new ButtonBuilder()
                 .setCustomId("entrar_gel_inf")
                 .setLabel("Gel Infinito")
-                .setEmoji(config.emojiGelInfinito || "♾️")
-                .setStyle(ButtonStyle.Primary), // 🔵 Azul
-
+                .setEmoji(emojiGel)
+                .setStyle(ButtonStyle.Success),
             new ButtonBuilder()
                 .setCustomId("sair_fila")
                 .setLabel("Sair")
-                .setEmoji(config.emojiSair || "🚪")
+                .setEmoji(emojiSair)
                 .setStyle(ButtonStyle.Danger)
         );
     }
 
-    return {
-        embeds: [embed],
-        components: [row]
-    };
+    return { embeds: [embed], components: [row] };
 };

@@ -7,7 +7,6 @@ const {
     ModalBuilder, 
     TextInputBuilder, 
     TextInputStyle,
-    StringSelectMenuBuilder,
     ChannelType,
     PermissionFlagsBits
 } = require("discord.js");
@@ -61,21 +60,6 @@ module.exports = async (interaction) => {
             return await interaction.editReply({ content: "✅ Configuração alterada!" });
         }
 
-        if (interaction.isStringSelectMenu()) {
-            await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
-            const config = pegarConfig();
-            const valorEscolhido = interaction.values[0];
-
-            if (interaction.customId === "select_emoji_gel_normal") config.emojiGelNormal = valorEscolhido;
-            if (interaction.customId === "select_emoji_gel_inf") config.emojiGelInfinito = valorEscolhido;
-            if (interaction.customId === "select_emoji_emul1") config.emojiEmul1 = valorEscolhido;
-            if (interaction.customId === "select_emoji_emul2") config.emojiEmul2 = valorEscolhido;
-            if (interaction.customId === "select_emoji_sair") config.emojiSair = valorEscolhido;
-
-            salvarConfig(config);
-            return await interaction.editReply({ content: `✅ Emoji atualizado!` });
-        }
-
         if (interaction.isButton()) {
             const { customId, user, guild, channel, message } = interaction;
 
@@ -124,31 +108,6 @@ module.exports = async (interaction) => {
                 return await interaction.editReply({ content: "✅ Salvo!" });
             }
 
-            if (customId.startsWith("escolher_emoji_")) {
-                const tipo = customId.replace("escolher_emoji_", "");
-                const emojisDoServidor = guild.emojis.cache.first(25);
-
-                if (!emojisDoServidor.length) {
-                    return await interaction.reply({ content: "⚠️ Sem emojis personalizados!", flags: MessageFlags.Ephemeral });
-                }
-
-                const selectMenu = new StringSelectMenuBuilder()
-                    .setCustomId(`select_emoji_${tipo}`)
-                    .setPlaceholder("Selecione um emoji do servidor")
-                    .addOptions(
-                        emojisDoServidor.map(e => ({
-                            label: e.name,
-                            value: `<:${e.name}:${e.id}>`,
-                            emoji: e.id
-                        }))
-                    );
-
-                const row = new ActionRowBuilder().addComponents(selectMenu);
-                return await interaction.reply({ content: "Escolha o emoji:", components: [row], flags: MessageFlags.Ephemeral });
-            }
-
-            await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
-
             if (customId.startsWith("entrar_") || customId === "sair_fila") {
                 const painelId = message.id;
                 let tipoFila = customId.replace("entrar_", "");
@@ -180,11 +139,6 @@ module.exports = async (interaction) => {
                     modo: configReal.modo || "Mobile",
                     valor: configReal.valor || "20,00",
                     nomePainel: configReal.nomePainel || "PHANTOM",
-                    emojiGelNormal: configReal.emojiGelNormal,
-                    emojiGelInfinito: configReal.emojiGelInfinito,
-                    emojiEmul1: configReal.emojiEmul1,
-                    emojiEmul2: configReal.emojiEmul2,
-                    emojiSair: configReal.emojiSair,
                     quantidade: configReal.quantidade || 2
                 };
 
@@ -234,13 +188,11 @@ module.exports = async (interaction) => {
                 return await interaction.editReply({ content: `✅ <@${user.id}>, entrou na fila!` });
             }
 
-            // --- BOTÕES DE ACEITAR/CANCELAR (COM REMOÇÃO AUTOMÁTICA DA FILA) ---
             if (customId === "aceitar_partida") {
                 await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
                 const guild = interaction.guild;
 
                 try {
-                    // 1. Cria o canal de texto
                     const nomeCanal = `partida-${Date.now()}`;
                     const novoCanal = await guild.channels.create({
                         name: nomeCanal,
@@ -251,30 +203,22 @@ module.exports = async (interaction) => {
                     await interaction.editReply({ content: `✅ **PARTIDA CONFIRMADA!** Canal de texto criado: <#${novoCanal.id}>` });
                     await novoCanal.send(`👋 Bem-vindos à partida!`);
 
-                    // 2. CORREÇÃO AQUI: REMOVER OS JOGADORES DA FILA!
-                    // Pega o painel principal (mensagem que está na tela do canal)
-                    // Nota: o interaction vem da aba de logs, então precisamos buscar o painel original
+                    // Limpar fila
                     const mensagemPainel = message; 
                     const painelId = mensagemPainel.id;
-
-                    // Remove o jogador que clicou em Aceitar
                     filas.sairFila(painelId, user);
 
-                    // Como o segundo jogador não está no 'interaction', vamos pegar a lista completa e remover todos
-                    // (Isso assume que a fila estava cheia e vamos limpar tudo)
                     const configReal = pegarConfig();
                     const isEmulador = mensagemPainel.embeds[0]?.title?.includes("Emulador") || false;
                     const lista = filas.jogadores(isEmulador ? "1emulador" : "normal", painelId);
                     
-                    // Remove todos os jogadores encontrados na fila
                     if (lista && lista.length > 0) {
                         for (let jogador of lista) {
                             filas.sairFila(painelId, jogador);
                         }
-                        console.log(`🧹 FILA LIMPA! Jogadores removidos.`);
+                        console.log(`🧹 FILA LIMPA!`);
                     }
 
-                    // Atualiza o painel visual para ficar vazio de novo
                     const novoPainel = painelBuilder(configReal, [], []);
                     await mensagemPainel.edit(novoPainel).catch(() => {});
 
