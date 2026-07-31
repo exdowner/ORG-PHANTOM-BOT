@@ -57,19 +57,56 @@ module.exports = async (interaction) => {
         }
 
         if (interaction.isStringSelectMenu()) {
-            await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
-            const config = pegarConfig();
-            const valorEscolhido = interaction.values[0];
+            const { customId, values, guild } = interaction;
+            const valorEscolhido = values[0];
 
-            if (interaction.customId === "select_emoji_gel_normal") config.emojiGelNormal = valorEscolhido;
-            if (interaction.customId === "select_emoji_gel_inf") config.emojiGelInfinito = valorEscolhido;
-            if (interaction.customId === "select_emoji_emul1") config.emojiEmul1 = valorEscolhido;
-            if (interaction.customId === "select_emoji_emul2") config.emojiEmul2 = valorEscolhido;
-            if (interaction.customId === "select_emoji_sair") config.emojiSair = valorEscolhido;
+            // 1. PRIMEIRO MENU: Selecionar qual categoria de emoji configurar
+            if (customId === "select_categoria_emoji") {
+                const emojisDoServidor = guild.emojis.cache.first(25);
 
-            salvarConfig(config);
+                if (!emojisDoServidor.length) {
+                    return await interaction.reply({ 
+                        content: "⚠️ Este servidor não possui emojis personalizados salvos para listar!", 
+                        flags: MessageFlags.Ephemeral 
+                    });
+                }
 
-            return await interaction.editReply({ content: `✅ Emoji atualizado com sucesso para: ${valorEscolhido}` });
+                const selectEmojiMenu = new StringSelectMenuBuilder()
+                    .setCustomId(`select_emoji_${valorEscolhido}`)
+                    .setPlaceholder("Selecione o novo emoji do servidor")
+                    .addOptions(
+                        emojisDoServidor.map(e => ({
+                            label: e.name,
+                            value: `<:${e.name}:${e.id}>`,
+                            emoji: e.id
+                        }))
+                    );
+
+                const row = new ActionRowBuilder().addComponents(selectEmojiMenu);
+                return await interaction.update({ 
+                    content: `🔧 Categoria selecionada: **${valorEscolhido.replace(/_/g, " ").toUpperCase()}**\nEscolha o novo emoji abaixo:`, 
+                    components: [row] 
+                });
+            }
+
+            // 2. SEGUNDO MENU: Salvar o emoji escolhido para a categoria correspondente
+            if (customId.startsWith("select_emoji_")) {
+                const categoria = customId.replace("select_emoji_", "");
+                const config = pegarConfig();
+
+                if (categoria === "gel_normal") config.emojiGelNormal = valorEscolhido;
+                if (categoria === "gel_infinito") config.emojiGelInfinito = valorEscolhido;
+                if (categoria === "emul1") config.emojiEmul1 = valorEscolhido;
+                if (categoria === "emul2") config.emojiEmul2 = valorEscolhido;
+                if (categoria === "sair") config.emojiSair = valorEscolhido;
+
+                salvarConfig(config);
+
+                return await interaction.update({ 
+                    content: "✅ Emoji atualizado com sucesso.", 
+                    components: [] 
+                });
+            }
         }
 
         if (interaction.isButton()) {
@@ -96,27 +133,25 @@ module.exports = async (interaction) => {
                 return await interaction.showModal(modal);
             }
 
-            if (customId.startsWith("escolher_emoji_")) {
-                const tipo = customId.replace("escolher_emoji_", "");
-                const emojisDoServidor = guild.emojis.cache.first(25);
+            // NOVO FLUXO: Botão único para iniciar a configuração de emojis via StringSelectMenu
+            if (customId === "configurar_emojis") {
+                const selectCategoria = new StringSelectMenuBuilder()
+                    .setCustomId("select_categoria_emoji")
+                    .setPlaceholder("Selecione qual emoji deseja alterar")
+                    .addOptions([
+                        { label: "Gel Normal", value: "gel_normal", emoji: "🧊" },
+                        { label: "Gel Infinito", value: "gel_infinito", emoji: "♾️" },
+                        { label: "Emulador 1", value: "emul1", emoji: "📱" },
+                        { label: "Emulador 2", value: "emul2", emoji: "💻" },
+                        { label: "Sair", value: "sair", emoji: "🚪" }
+                    ]);
 
-                if (!emojisDoServidor.length) {
-                    return await interaction.reply({ content: "⚠️ Este servidor não possui emojis personalizados salvos para listar!", flags: MessageFlags.Ephemeral });
-                }
-
-                const selectMenu = new StringSelectMenuBuilder()
-                    .setCustomId(`select_emoji_${tipo}`)
-                    .setPlaceholder("Selecione um emoji do servidor")
-                    .addOptions(
-                        emojisDoServidor.map(e => ({
-                            label: e.name,
-                            value: `<:${e.name}:${e.id}>`,
-                            emoji: e.id
-                        }))
-                    );
-
-                const row = new ActionRowBuilder().addComponents(selectMenu);
-                return await interaction.reply({ content: "Escolha o emoji abaixo:", components: [row], flags: MessageFlags.Ephemeral });
+                const row = new ActionRowBuilder().addComponents(selectCategoria);
+                return await interaction.reply({ 
+                    content: "⚙️ Selecione abaixo qual emoji você deseja configurar:", 
+                    components: [row], 
+                    flags: MessageFlags.Ephemeral 
+                });
             }
 
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
@@ -151,18 +186,10 @@ module.exports = async (interaction) => {
 
                 const tituloAtual = message.embeds[0]?.title || "";
                 
-                // --- CORREÇÃO DO CONFIG MOCK AQUI ---
-                // 1. Carrega as configurações salvas (mantendo emojis, quantidade e etc)
                 const configMock = pegarConfig();
-
-                // 2. Garante que quantidade não fique undefined caso a config antiga não tivesse esse campo
-                if (configMock.quantidade === undefined) configMock.quantidade = 2;
-
-                // 3. Atualiza APENAS o modo, valor e misto (o resto permanece salvo!)
                 configMock.modo = tituloAtual.split("|")[0]?.trim() || configMock.modo;
                 configMock.valor = tituloAtual.split("|")[1]?.trim() || configMock.valor;
                 configMock.modoMisto = isMisto;
-                // -------------------------------------
 
                 try {
                     if (typeof painelBuilder === "function") {

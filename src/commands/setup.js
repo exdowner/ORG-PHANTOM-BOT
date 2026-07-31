@@ -1,3 +1,4 @@
+
 const {
     SlashCommandBuilder,
     ActionRowBuilder,
@@ -19,13 +20,13 @@ module.exports = {
     async execute(interaction) {
         await interaction.deferReply({
             flags: MessageFlags.Ephemeral
-        }).catch(() => {});
+        });
 
         const config = pegarConfig();
 
         if (!config.quantidade) config.quantidade = 2;
 
-        // Usa o mesmo painel do /setupenvia
+        // Usa exatamente o mesmo painel do /setupenvia
         const painel = painelBuilder(config, [], []);
 
         const row1 = new ActionRowBuilder().addComponents(
@@ -46,45 +47,25 @@ module.exports = {
 
             new ButtonBuilder()
                 .setCustomId("ativar_misto")
-                .setLabel("Misto On/Off")
+                .setLabel("Misto")
                 .setStyle(ButtonStyle.Primary)
         );
 
         const row2 = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
-                .setCustomId("escolher_emoji_gel_normal")
-                .setLabel("Emoji Gel Normal")
-                .setStyle(ButtonStyle.Success),
-
-            new ButtonBuilder()
-                .setCustomId("escolher_emoji_gel_inf")
-                .setLabel("Emoji Gel Inf")
-                .setStyle(ButtonStyle.Success),
-
-            new ButtonBuilder()
-                .setCustomId("escolher_emoji_emul1")
-                .setLabel("Emoji Emul 1")
-                .setStyle(ButtonStyle.Success),
-
-            new ButtonBuilder()
-                .setCustomId("escolher_emoji_emul2")
-                .setLabel("Emoji Emul 2")
+                .setCustomId("configurar_emojis")
+                .setLabel("😀 Configurar Emojis")
                 .setStyle(ButtonStyle.Success)
         );
 
         const row3 = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
-                .setCustomId("escolher_emoji_sair")
-                .setLabel("Emoji Sair")
-                .setStyle(ButtonStyle.Danger),
-
-            new ButtonBuilder()
                 .setCustomId("salvar_config")
-                .setLabel("Salvar Tudo")
+                .setLabel("💾 Salvar Tudo")
                 .setStyle(ButtonStyle.Primary)
         );
 
-        return interaction.editReply({
+        await interaction.editReply({
             embeds: painel.embeds,
             components: [row1, row2, row3]
         });
