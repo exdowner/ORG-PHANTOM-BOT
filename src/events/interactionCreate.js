@@ -14,7 +14,6 @@ const ranking = require("../systems/ranking.js");
 const filas = require("../systems/filas.js");
 const painelBuilder = require("../systems/painelBuilder.js");
 const { pegarConfig, salvarConfig } = require("../systems/config.js");
-const { enviarPreview } = require("../commands/setup.js"); 
 
 module.exports = async (interaction) => {
     // 1. COMANDOS SLASH
@@ -51,15 +50,18 @@ module.exports = async (interaction) => {
         }
 
         salvarConfig(config);
-        await enviarPreview(interaction, config);
-        return;
+
+        return await interaction.reply({ 
+            content: "✅ Configuração alterada com sucesso! Use `/setup` novamente para ver a nova preview.", 
+            flags: MessageFlags.Ephemeral 
+        });
     }
 
     // 3. INTERAÇÃO DE BOTÕES
     if (interaction.isButton()) {
         const { customId, user, guild, channel, message } = interaction;
 
-        // --- BOTÕES DO EDITOR DE SETUP ---
+        // --- BOTÕES DO EDITOR DE SETUP (ABRINDO MODAIS) ---
         if (customId === "editar_valor") {
             const modal = new ModalBuilder()
                 .setCustomId("modal_editar_valor")
@@ -127,8 +129,7 @@ module.exports = async (interaction) => {
             const config = pegarConfig();
             config.modoMisto = !(config.modoMisto === true || config.modoMisto === "true");
             salvarConfig(config);
-            await enviarPreview(interaction, config);
-            return;
+            return await interaction.editReply({ content: `🔄 Modo misto agora está: **${config.modoMisto ? "ATIVADO" : "DESATIVADO"}**` });
         }
 
         if (customId === "salvar_config") {
@@ -190,7 +191,7 @@ module.exports = async (interaction) => {
             return;
         }
 
-        // --- SISTEMA DE FILAS (ATUALIZAÇÃO PÚBLICA PARA O OPONENTE VER) ---
+        // --- SISTEMA DE FILAS ---
         if (customId.startsWith("entrar_") || customId === "sair_fila") {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
