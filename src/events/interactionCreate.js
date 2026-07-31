@@ -7,7 +7,9 @@ const {
     ModalBuilder, 
     TextInputBuilder, 
     TextInputStyle,
-    StringSelectMenuBuilder
+    StringSelectMenuBuilder,
+    ChannelType,
+    PermissionFlagsBits
 } = require("discord.js");
 const ranking = require("../systems/ranking.js");
 const filas = require("../systems/filas.js");
@@ -152,15 +154,11 @@ module.exports = async (interaction) => {
                 const painelId = message.id;
                 let tipoFila = customId.replace("entrar_", "");
                 
-                // AQUI É A CORREÇÃO MILIONÁRIA! 
-                // O bot vai ler o que está no CUSTOM ID e decidir o que é Misto
                 const isEmulador = tipoFila.includes("emulador") || tipoFila.includes("emuladores");
 
-                // Mapeamento correto das filas para o banco
                 let nomeFila = tipoFila;
                 if (tipoFila === "gel_normal") nomeFila = "normal";
                 else if (tipoFila === "gel_inf") nomeFila = "infinito";
-                // Para emulador, mantemos o nome exato que o banco espera
                 
                 if (typeof filas.sairFila !== 'function' || typeof filas.entrarFila !== 'function') {
                     return await interaction.editReply({ content: "❌ Erro: Arquivo de filas não configurado corretamente." });
@@ -173,14 +171,11 @@ module.exports = async (interaction) => {
                     if (!resultado.ok) return await interaction.editReply({ content: resultado.motivo });
                 }
 
-                // Pega as listas com base no que o botão disse ser
                 const lista1 = filas.jogadores(isEmulador ? "1emulador" : "normal", painelId);
                 const lista2 = filas.jogadores(isEmulador ? "2emuladores" : "infinito", painelId);
                 
                 const configMock = pegarConfig();
-                // AQUI É A MÁGICA: O modo Misto é decidido pelo que o usuário clicou!
                 configMock.modoMisto = isEmulador;
-                // Passamos o resto das configs
                 configMock.modo = configMock.modo || "Mobile";
                 configMock.valor = configMock.valor || "20,00";
                 configMock.nomePainel = configMock.nomePainel || "PHANTOM";
@@ -198,6 +193,58 @@ module.exports = async (interaction) => {
                 } catch (err) {
                     console.error("Erro ao atualizar painel público:", err);
                 }
+
+                // ================================================================
+                // 🚨 LÓGICA DE CRIAÇÃO DE CANAL (ADICIONADA AQUI)
+                // ================================================================
+                
+                // Pega a quantidade limite
+                const qtd = configMock.quantidade || 2;
+
+                // Verifica se a fila que o jogador entrou está completa
+                const filaAtual = lista1.length >= qtd ? lista1 : (lista2.length >= qtd ? lista2 : null);
+
+                if (filaAtual && filaAtual.length >= qtd) {
+                    console.log("🎯🎯🎯 FILA COMPLETA! CRIANDO CANAL DE VOZ...");
+                    
+                    // Garante que não vai tentar criar mais de uma vez
+                    const canalExistente = guild.channels.cache.find(c => c.name.startsWith("partida-"));
+                    if (!canalExistente) {
+                        try {
+                            const nomeCanal = `partida-${Date.now()}`;
+                            const novoCanal = await guild.channels.create({
+                                name: nomeCanal,
+                                type: ChannelType.GuildVoice,
+                                permissionOverwrites: [
+                                    {
+                                        id: guild.id,
+                                        deny: [PermissionFlagsBits.Connect],
+                                    },
+                                    {
+                                        id: filaAtual[0].id,
+                                        allow: [PermissionFlagsBits.Connect, PermissionFlagsBits.ViewChannel],
+                                    },
+                                    {
+                                        id: filaAtual[1].id,
+                                        allow: [PermissionFlagsBits.Connect, PermissionFlagsBits.ViewChannel],
+                                    }
+                                ]
+                            });
+
+                            console.log(`✅ CANAL CRIADO: #${novoCanal.name}`);
+                            await interaction.channel.send({ content: `✅ **PARTIDA INICIADA!** Canal de voz: <#${novoCanal.id}>` });
+
+                            // Opcional: esvaziar a fila após criar
+                            // filas.sairFila(painelId, filaAtual[0]);
+                            // filas.sairFila(painelId, filaAtual[1]);
+
+                        } catch (err) {
+                            console.error("❌ ERRO AO CRIAR CANAL:", err);
+                            await interaction.channel.send({ content: `❌ Erro ao criar o canal de voz.` });
+                        }
+                    }
+                }
+                // ================================================================
 
                 if (customId === "sair_fila") {
                     return await interaction.editReply({ content: `🚪 <@${user.id}>, saiu da fila!` });
