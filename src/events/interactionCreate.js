@@ -14,7 +14,16 @@ const {
 const ranking = require("../systems/ranking.js");
 const filas = require("../systems/filas.js");
 const painelBuilder = require("../systems/painelBuilder.js");
-const { pegarConfig, salvarConfig } = require("../systems/config.js");
+
+// --- BLINDAGEM E PROTEÇÃO CONTRA ERROS DE IMPORTAÇÃO ---
+const configModule = require("../systems/config.js");
+console.log("🔍 Módulo config carregado com sucesso no interactionCreate");
+
+const pegarConfig = configModule.pegarConfig || (() => ({}));
+const salvarConfig = configModule.salvarConfig || (() => {
+    console.error("❌ ERRO CRÍTICO: salvarConfig não foi encontrada!");
+});
+// --------------------------------------------------------
 
 module.exports = async (interaction) => {
     try {
@@ -34,7 +43,7 @@ module.exports = async (interaction) => {
             return;
         }
 
-        // 2. SUBMISSÃO DE MODAIS (Edição de texto/números)
+        // 2. SUBMISSÃO DE MODAIS
         if (interaction.isModalSubmit()) {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
             const config = pegarConfig();
@@ -76,7 +85,6 @@ module.exports = async (interaction) => {
         if (interaction.isButton()) {
             const { customId, user, guild, channel, message } = interaction;
 
-            // ABRIR MODAIS DE TEXTO
             if (customId === "editar_valor") {
                 const modal = new ModalBuilder().setCustomId("modal_editar_valor").setTitle("Editar Valor");
                 const input = new TextInputBuilder().setCustomId("input_valor").setLabel("Novo Valor").setStyle(TextInputStyle.Short).setRequired(true);
@@ -98,10 +106,9 @@ module.exports = async (interaction) => {
                 return await interaction.showModal(modal);
             }
 
-            // SELETORES DE EMOJIS DO SERVIDOR (Menu Suspenso interativo)
             if (customId.startsWith("escolher_emoji_")) {
                 const tipo = customId.replace("escolher_emoji_", "");
-                const emojisDoServidor = guild.emojis.cache.first(25); // Pega até 25 emojis do server
+                const emojisDoServidor = guild.emojis.cache.first(25);
 
                 if (!emojisDoServidor.length) {
                     return await interaction.reply({ content: "⚠️ Este servidor não possui emojis personalizados salvos para listar!", flags: MessageFlags.Ephemeral });
@@ -135,7 +142,7 @@ module.exports = async (interaction) => {
                 return await interaction.editReply({ content: "✅ Configurações salvas e aplicadas com sucesso!" });
             }
 
-            // --- SISTEMA DE FILAS E OUTROS ---
+            // --- SISTEMA DE FILAS ---
             if (customId.startsWith("entrar_") || customId === "sair_fila") {
                 const painelId = message.id;
                 let tipoFila = customId.replace("entrar_", "");
@@ -177,7 +184,7 @@ module.exports = async (interaction) => {
                 return await interaction.editReply({ content: `✅ <@${user.id}>, você entrou na fila!` });
             }
 
-            // --- RANKING E PERFIL ---
+            // --- RANKING ---
             if (customId === "btn_meu_perfil") {
                 const perfil = ranking.pegarPerfil(user.id);
                 const total = perfil.vitorias + perfil.derrotas;
