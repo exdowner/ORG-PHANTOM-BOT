@@ -14,11 +14,11 @@ module.exports = {
         const embed = new EmbedBuilder()
             .setColor("#2b2d31")
             .setTitle("⚙️ Painel de Configuração - Preview")
-            .setDescription("Use os botões abaixo para configurar os parâmetros e emojis do seu painel de filas.")
+            .setDescription("Abaixo está a pré-visualização das configurações atuais do bot.")
             .addFields(
                 { name: "🎮 Modo", value: `${config.modo}`, inline: true },
                 { name: "💰 Valor", value: `${config.valor}`, inline: true },
-                { name: "👥 Quantidade por time", value: `${config.quantidade}`, inline: true },
+                { name: "👥 Qtd por time", value: `${config.quantidade}`, inline: true },
                 { name: "🔀 Modo Misto", value: config.modoMisto ? "Ativado" : "Desativado", inline: true }
             );
 
