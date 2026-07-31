@@ -1,7 +1,8 @@
 const { EmbedBuilder, MessageFlags, PermissionFlagsBits, ChannelType, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const ranking = require("../systems/ranking.js");
 const filas = require("../systems/filas.js");
-const criarPainelEmbed = require("../systems/painelBuilder.js"); // (Ajuste o caminho se o seu arquivo do painel estiver em outra pasta, ex: ../components/ ou ../utils/)
+const painelBuilder = require("../systems/painelBuilder.js");
+const { pegarConfig, salvarConfig } = require("../systems/config.js");
 
 module.exports = async (interaction) => {
     // 1. COMANDOS SLASH
@@ -23,6 +24,27 @@ module.exports = async (interaction) => {
     // 2. INTERAÇÃO DE BOTÕES
     if (interaction.isButton()) {
         const { customId, user, guild, channel, message } = interaction;
+
+        // --- BOTÕES DO EDITOR DE SETUP ---
+        if (["editar_valor", "editar_modo", "editar_quantidade", "editar_emojis", "ativar_misto", "salvar_config"].includes(customId)) {
+            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+            const config = pegarConfig();
+
+            if (customId === "ativar_misto") {
+                config.modoMisto = !(config.modoMisto === true || config.modoMisto === "true");
+                salvarConfig(config);
+            }
+
+            if (customId === "salvar_config") {
+                // Se o comando setup tiver a função de enviar preview, podemos atualizar a mensagem com sucesso
+                return await interaction.editReply({ content: "✅ Configurações salvas com sucesso!" });
+            }
+
+            // Exemplo de resposta para os botões de edição do editor
+            return await interaction.editReply({ 
+                content: `⚙️ O botão **${customId.replace("editar_", "").toUpperCase()}** foi clicado! (Para alterar valores específicos, utilize os comandos de configuração correspondentes ou ajuste no sistema).` 
+            });
+        }
 
         // --- TICKET DE SUPORTE ---
         if (customId === "abrir_ticket") {
@@ -78,13 +100,12 @@ module.exports = async (interaction) => {
             return;
         }
 
-        // --- SISTEMA DE FILAS COMPLETO E SINCRONIZADO ---
+        // --- SISTEMA DE FILAS ---
         if (customId.startsWith("entrar_") || customId === "sair_fila") {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
             const painelId = message.id;
 
-            // Traduz os botões do Discord para as chaves exatas do seu systems/filas.js
             let tipoFila = customId.replace("entrar_", "");
             if (tipoFila === "gel_normal") tipoFila = "normal";
             if (tipoFila === "gel_inf") tipoFila = "infinito";
@@ -98,14 +119,10 @@ module.exports = async (interaction) => {
                 }
             }
 
-            // Puxa as listas atualizadas de jogadores da memória
-            const f1 = filas.jogadores(tipoFila === "1emulador" || tipoFila === "normal" ? tipoFila : (tipoFila === "2emuladores" ? "2emuladores" : "normal"), painelId);
-            // Pega as duas filas correspondentes dependendo se é misto ou mobile
             const isMisto = tipoFila.includes("emulador");
             const lista1 = filas.jogadores(isMisto ? "1emulador" : "normal", painelId);
             const lista2 = filas.jogadores(isMisto ? "2emuladores" : "infinito", painelId);
 
-            // Simula uma config básica baseada no título atual da mensagem para reconstruir o layout original perfeito
             const tituloAtual = message.embeds[0]?.title || "";
             const configMock = {
                 modo: tituloAtual.split("|")[0]?.trim() || "X1",
@@ -114,10 +131,9 @@ module.exports = async (interaction) => {
                 modoMisto: isMisto
             };
 
-            // Atualiza o painel público no canal para todo mundo ver o oponente na fila!
             try {
-                if (typeof criarPainelEmbed === "function") {
-                    const novoPainel = criarPainelEmbed(configMock, lista1, lista2);
+                if (typeof painelBuilder === "function") {
+                    const novoPainel = painelBuilder(configMock, lista1, lista2);
                     await message.edit(novoPainel).catch(() => {});
                 }
             } catch (err) {
