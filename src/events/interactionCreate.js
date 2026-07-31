@@ -174,16 +174,23 @@ module.exports = async (interaction) => {
                 const lista1 = filas.jogadores(isEmulador ? "1emulador" : "normal", painelId);
                 const lista2 = filas.jogadores(isEmulador ? "2emuladores" : "infinito", painelId);
                 
-                const configMock = pegarConfig();
-                configMock.modoMisto = isEmulador;
-                configMock.modo = configMock.modo || "Mobile";
-                configMock.valor = configMock.valor || "20,00";
-                configMock.nomePainel = configMock.nomePainel || "PHANTOM";
-                configMock.emojiGelNormal = configMock.emojiGelNormal || "🧊";
-                configMock.emojiGelInfinito = configMock.emojiGelInfinito || "♾️";
-                configMock.emojiEmul1 = configMock.emojiEmul1 || "📱";
-                configMock.emojiEmul2 = configMock.emojiEmul2 || "💻";
-                configMock.emojiSair = configMock.emojiSair || "🚪";
+                // ------------------ CORREÇÃO DE EMOJIS AQUI ------------------
+                const configReal = pegarConfig(); // Pega a config salva no banco
+
+                const configMock = {
+                    modoMisto: isEmulador,
+                    modo: configReal.modo || "Mobile",
+                    valor: configReal.valor || "20,00",
+                    nomePainel: configReal.nomePainel || "PHANTOM",
+                    // Aqui é a correção: usa o emoji salvo, e SÓ se for undefined usa o padrão
+                    emojiGelNormal: configReal.emojiGelNormal || "🧊",
+                    emojiGelInfinito: configReal.emojiGelInfinito || "♾️",
+                    emojiEmul1: configReal.emojiEmul1 || "📱",
+                    emojiEmul2: configReal.emojiEmul2 || "💻",
+                    emojiSair: configReal.emojiSair || "🚪",
+                    quantidade: configReal.quantidade || 2
+                };
+                // ------------------------------------------------------------
 
                 try {
                     if (typeof painelBuilder === "function") {
@@ -195,19 +202,14 @@ module.exports = async (interaction) => {
                 }
 
                 // ================================================================
-                // 🚨 LÓGICA DE CRIAÇÃO DE CANAL (ADICIONADA AQUI)
+                // LÓGICA DE CRIAÇÃO DE CANAL
                 // ================================================================
-                
-                // Pega a quantidade limite
                 const qtd = configMock.quantidade || 2;
-
-                // Verifica se a fila que o jogador entrou está completa
                 const filaAtual = lista1.length >= qtd ? lista1 : (lista2.length >= qtd ? lista2 : null);
 
                 if (filaAtual && filaAtual.length >= qtd) {
                     console.log("🎯🎯🎯 FILA COMPLETA! CRIANDO CANAL DE VOZ...");
                     
-                    // Garante que não vai tentar criar mais de uma vez
                     const canalExistente = guild.channels.cache.find(c => c.name.startsWith("partida-"));
                     if (!canalExistente) {
                         try {
@@ -216,27 +218,14 @@ module.exports = async (interaction) => {
                                 name: nomeCanal,
                                 type: ChannelType.GuildVoice,
                                 permissionOverwrites: [
-                                    {
-                                        id: guild.id,
-                                        deny: [PermissionFlagsBits.Connect],
-                                    },
-                                    {
-                                        id: filaAtual[0].id,
-                                        allow: [PermissionFlagsBits.Connect, PermissionFlagsBits.ViewChannel],
-                                    },
-                                    {
-                                        id: filaAtual[1].id,
-                                        allow: [PermissionFlagsBits.Connect, PermissionFlagsBits.ViewChannel],
-                                    }
+                                    { id: guild.id, deny: [PermissionFlagsBits.Connect] },
+                                    { id: filaAtual[0].id, allow: [PermissionFlagsBits.Connect, PermissionFlagsBits.ViewChannel] },
+                                    { id: filaAtual[1].id, allow: [PermissionFlagsBits.Connect, PermissionFlagsBits.ViewChannel] }
                                 ]
                             });
 
                             console.log(`✅ CANAL CRIADO: #${novoCanal.name}`);
                             await interaction.channel.send({ content: `✅ **PARTIDA INICIADA!** Canal de voz: <#${novoCanal.id}>` });
-
-                            // Opcional: esvaziar a fila após criar
-                            // filas.sairFila(painelId, filaAtual[0]);
-                            // filas.sairFila(painelId, filaAtual[1]);
 
                         } catch (err) {
                             console.error("❌ ERRO AO CRIAR CANAL:", err);
