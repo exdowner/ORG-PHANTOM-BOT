@@ -152,8 +152,7 @@ module.exports = async (interaction) => {
                 const painelId = message.id;
                 let tipoFila = customId.replace("entrar_", "");
                 
-                // AQUI É A MUDANÇA MILIONÁRIA:
-                // Em vez de ler o título, a gente lê o BANCO DE DADOS!
+                // AQUI ESTÁ A CORREÇÃO ABSOLUTA: Lemos o banco de dados novamente
                 const configReal = pegarConfig();
                 const ehMisto = configReal.modoMisto === true;
 
@@ -177,7 +176,7 @@ module.exports = async (interaction) => {
                 const lista2 = filas.jogadores(ehMisto ? "2emuladores" : "infinito", painelId);
                 
                 const configMock = pegarConfig();
-                // Configurações para o Builder
+                // Passamos a configuração REAL para o painelBuilder
                 configMock.modo = configReal.modo || "Mobile";
                 configMock.valor = configReal.valor || "20,00";
                 configMock.nomePainel = configReal.nomePainel || "PHANTOM";
@@ -186,7 +185,7 @@ module.exports = async (interaction) => {
                 configMock.emojiEmul1 = configReal.emojiEmul1 || "📱";
                 configMock.emojiEmul2 = configReal.emojiEmul2 || "💻";
                 configMock.emojiSair = configReal.emojiSair || "🚪";
-                // FORÇA O MISTO A SER O QUE ESTÁ NO BANCO DE DADOS!!!
+                // FORÇAMOS O MISTO COM O VALOR DO BANCO DE DADOS
                 configMock.modoMisto = ehMisto;
 
                 try {
