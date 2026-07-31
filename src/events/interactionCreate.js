@@ -169,11 +169,22 @@ module.exports = async (interaction) => {
                 return await interaction.editReply({ content: "✅ Salvo!" });
             }
 
+            // --- Lógica das Filas (Entrar/Sair) com VERIFICAÇÃO DE SEGURANÇA ---
             if (customId.startsWith("entrar_") || customId === "sair_fila") {
                 const painelId = message.id;
                 let tipoFila = customId.replace("entrar_", "");
                 if (tipoFila === "gel_normal") tipoFila = "normal";
                 if (tipoFila === "gel_inf") tipoFila = "infinito";
+
+                // Verificação EXTRA para garantir que as funções existem
+                if (typeof filas.sairFila !== 'function') {
+                    console.error("ERRO CRÍTICO: A função filas.sairFila não foi encontrada!");
+                    return await interaction.editReply({ content: "❌ Erro interno: Função de sair não encontrada." });
+                }
+                if (typeof filas.entrarFila !== 'function') {
+                    console.error("ERRO CRÍTICO: A função filas.entrarFila não foi encontrada!");
+                    return await interaction.editReply({ content: "❌ Erro interno: Função de entrar não encontrada." });
+                }
 
                 if (customId === "sair_fila") {
                     filas.sairFila(painelId, user);
