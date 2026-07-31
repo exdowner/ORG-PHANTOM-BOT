@@ -10,7 +10,9 @@ const defaultConfig = {
     modoMisto: false,
     emojiGelNormal: "🧊",
     emojiGelInfinito: "♾️",
-    emojiSair: "🚪"
+    emojiSair: "🚪",
+    emojiEmul1: "📱",
+    emojiEmul2: "💻"
 };
 
 function pegarConfig() {
