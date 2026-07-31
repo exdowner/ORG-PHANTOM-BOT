@@ -66,12 +66,12 @@ module.exports = (config, fila1 = [], fila2 = []) => {
             new ButtonBuilder()
                 .setCustomId("entrar_gel_normal")
                 .setLabel("Gel Normal")
-                .setEmoji(config.emojiGelNormal || "💣")
+                .setEmoji(config.emojiGelNormal || "🧊")
                 .setStyle(ButtonStyle.Primary),
             new ButtonBuilder()
                 .setCustomId("entrar_gel_inf")
                 .setLabel("Gel Infinito")
-                .setEmoji(config.emojiGelInfinito || "💣")
+                .setEmoji(config.emojiGelInfinito || "♾️")
                 .setStyle(ButtonStyle.Primary),
             new ButtonBuilder()
                 .setCustomId("sair_fila")
