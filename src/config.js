@@ -3,7 +3,6 @@ const path = require('path');
 
 const caminhoConfig = path.join(__dirname, '../../config.json');
 
-// Configuração padrão caso o arquivo não exista
 const defaultConfig = {
     modo: "Mobile",
     valor: "R$ 5,00",

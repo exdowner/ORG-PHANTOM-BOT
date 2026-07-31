@@ -62,7 +62,6 @@ module.exports = async (interaction) => {
         if (interaction.isButton()) {
             const { customId, user, guild, channel, message } = interaction;
 
-            // --- BOTÕES DO EDITOR (MODAIS NÃO USAM DEFER) ---
             if (customId === "editar_valor") {
                 const modal = new ModalBuilder()
                     .setCustomId("modal_editar_valor")
@@ -125,7 +124,6 @@ module.exports = async (interaction) => {
                 return await interaction.showModal(modal);
             }
 
-            // PARA TODOS OS OUTROS BOTÕES, DEFER IMEDIATO PARA EVITAR TIMEOUT
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
 
             if (customId === "ativar_misto") {
