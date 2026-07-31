@@ -169,20 +169,26 @@ module.exports = async (interaction) => {
                 return await interaction.editReply({ content: "✅ Salvo!" });
             }
 
-            // --- Lógica das Filas (Entrar/Sair) com VERIFICAÇÃO DE SEGURANÇA ---
+            // --- Lógica das Filas (Entrar/Sair) ---
             if (customId.startsWith("entrar_") || customId === "sair_fila") {
                 const painelId = message.id;
                 let tipoFila = customId.replace("entrar_", "");
+                
+                // CORREÇÃO MÁGICA AQUI:
+                // Verifica se o título do painel já está no modo Misto
+                const tituloAtual = message.embeds[0]?.title || "";
+                const ehMisto = tituloAtual.includes("Emulador") || tituloAtual.includes("emulador");
+
                 if (tipoFila === "gel_normal") tipoFila = "normal";
                 if (tipoFila === "gel_inf") tipoFila = "infinito";
 
-                // Verificação EXTRA para garantir que as funções existem
+                // Verificação de segurança para funções
                 if (typeof filas.sairFila !== 'function') {
-                    console.error("ERRO CRÍTICO: A função filas.sairFila não foi encontrada!");
+                    console.error("ERRO: filas.sairFila não encontrada!");
                     return await interaction.editReply({ content: "❌ Erro interno: Função de sair não encontrada." });
                 }
                 if (typeof filas.entrarFila !== 'function') {
-                    console.error("ERRO CRÍTICO: A função filas.entrarFila não foi encontrada!");
+                    console.error("ERRO: filas.entrarFila não encontrada!");
                     return await interaction.editReply({ content: "❌ Erro interno: Função de entrar não encontrada." });
                 }
 
@@ -193,16 +199,15 @@ module.exports = async (interaction) => {
                     if (!resultado.ok) return await interaction.editReply({ content: resultado.motivo });
                 }
 
-                const isMisto = tipoFila.includes("emulador");
-                const lista1 = filas.jogadores(isMisto ? "1emulador" : "normal", painelId);
-                const lista2 = filas.jogadores(isMisto ? "2emuladores" : "infinito", painelId);
-
-                const tituloAtual = message.embeds[0]?.title || "";
+                // Pega as listas atualizadas
+                const lista1 = filas.jogadores(ehMisto ? "1emulador" : "normal", painelId);
+                const lista2 = filas.jogadores(ehMisto ? "2emuladores" : "infinito", painelId);
                 
                 const configMock = pegarConfig();
                 configMock.modo = tituloAtual.split("|")[0]?.trim() || configMock.modo;
                 configMock.valor = tituloAtual.split("|")[1]?.trim() || configMock.valor;
-                configMock.modoMisto = isMisto;
+                // AQUI É A CORREÇÃO: Força o modo misto baseado no título, e não no botão clicado!
+                configMock.modoMisto = ehMisto;
 
                 try {
                     if (typeof painelBuilder === "function") {
