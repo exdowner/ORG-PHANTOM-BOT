@@ -38,6 +38,7 @@ module.exports = {
         // Adiciona o jogador à fila específica
         if (fila[tipoFila]) {
             fila[tipoFila].push(user);
+            console.log(`✅ [FILA] ${user.username} entrou em ${tipoFila} (Agora tem ${fila[tipoFila].length})`);
             return { ok: true };
         } else {
             return { ok: false, motivo: "❌ Tipo de fila inválido." };
@@ -53,11 +54,23 @@ module.exports = {
         if (!painelId || !user) return;
 
         const fila = filasAtivas.get(painelId);
-        if (!fila) return;
+        if (!fila) {
+            console.log(`⚠️ [FILA] Tentativa de sair de um painel que não existe: ${painelId}`);
+            return;
+        }
 
         // Remove o jogador de qualquer fila que ele estiver
+        let removeu = false;
         for (const key in fila) {
+            const antes = fila[key].length;
             fila[key] = fila[key].filter(j => j.id !== user.id);
+            if (fila[key].length < antes) removeu = true;
+        }
+
+        if (removeu) {
+            console.log(`✅ [FILA] ${user.username} saiu do painel ${painelId}`);
+        } else {
+            console.log(`⚠️ [FILA] ${user.username} não estava em nenhuma fila do painel ${painelId}`);
         }
 
         // Se a fila estiver vazia, pode remover do mapa (opcional)

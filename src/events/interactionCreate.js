@@ -151,7 +151,7 @@ module.exports = async (interaction) => {
 
             // --- Lógica das Filas (Entrar/Sair) ---
             if (customId.startsWith("entrar_") || customId === "sair_fila") {
-                const painelId = message.id;
+                const painelId = message.id; // ESSA LINHA É CRUCIAL! O ID DA MENSAGEM
                 let tipoFila = customId.replace("entrar_", "");
                 
                 const isEmulador = tipoFila.includes("emulador") || tipoFila.includes("emuladores");
@@ -159,6 +159,7 @@ module.exports = async (interaction) => {
                 let nomeFila = tipoFila;
                 if (tipoFila === "gel_normal") nomeFila = "normal";
                 else if (tipoFila === "gel_inf") nomeFila = "infinito";
+                // Para emulador, mantemos o nome original "1emulador" e "2emuladores"
                 
                 if (typeof filas.sairFila !== 'function' || typeof filas.entrarFila !== 'function') {
                     return await interaction.editReply({ content: "❌ Erro: Arquivo de filas não configurado corretamente." });
