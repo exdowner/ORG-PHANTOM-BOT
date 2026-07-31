@@ -152,15 +152,16 @@ module.exports = async (interaction) => {
                 const painelId = message.id;
                 let tipoFila = customId.replace("entrar_", "");
                 
-                // AQUI ESTÁ A CORREÇÃO ABSOLUTA: Lemos o banco de dados novamente
-                const configReal = pegarConfig();
-                const ehMisto = configReal.modoMisto === true;
+                // AQUI É A CORREÇÃO MILIONÁRIA! 
+                // O bot vai ler o que está no CUSTOM ID e decidir o que é Misto
+                const isEmulador = tipoFila.includes("emulador") || tipoFila.includes("emuladores");
 
-                if (tipoFila === "gel_normal") tipoFila = "normal";
-                if (tipoFila === "gel_inf") tipoFila = "infinito";
-                if (tipoFila === "1emulador") tipoFila = "1emulador";
-                if (tipoFila === "2emuladores") tipoFila = "2emuladores";
-
+                // Mapeamento correto das filas para o banco
+                let nomeFila = tipoFila;
+                if (tipoFila === "gel_normal") nomeFila = "normal";
+                else if (tipoFila === "gel_inf") nomeFila = "infinito";
+                // Para emulador, mantemos o nome exato que o banco espera
+                
                 if (typeof filas.sairFila !== 'function' || typeof filas.entrarFila !== 'function') {
                     return await interaction.editReply({ content: "❌ Erro: Arquivo de filas não configurado corretamente." });
                 }
@@ -168,25 +169,26 @@ module.exports = async (interaction) => {
                 if (customId === "sair_fila") {
                     filas.sairFila(painelId, user);
                 } else {
-                    const resultado = filas.entrarFila(painelId, tipoFila, user);
+                    const resultado = filas.entrarFila(painelId, nomeFila, user);
                     if (!resultado.ok) return await interaction.editReply({ content: resultado.motivo });
                 }
 
-                const lista1 = filas.jogadores(ehMisto ? "1emulador" : "normal", painelId);
-                const lista2 = filas.jogadores(ehMisto ? "2emuladores" : "infinito", painelId);
+                // Pega as listas com base no que o botão disse ser
+                const lista1 = filas.jogadores(isEmulador ? "1emulador" : "normal", painelId);
+                const lista2 = filas.jogadores(isEmulador ? "2emuladores" : "infinito", painelId);
                 
                 const configMock = pegarConfig();
-                // Passamos a configuração REAL para o painelBuilder
-                configMock.modo = configReal.modo || "Mobile";
-                configMock.valor = configReal.valor || "20,00";
-                configMock.nomePainel = configReal.nomePainel || "PHANTOM";
-                configMock.emojiGelNormal = configReal.emojiGelNormal || "🧊";
-                configMock.emojiGelInfinito = configReal.emojiGelInfinito || "♾️";
-                configMock.emojiEmul1 = configReal.emojiEmul1 || "📱";
-                configMock.emojiEmul2 = configReal.emojiEmul2 || "💻";
-                configMock.emojiSair = configReal.emojiSair || "🚪";
-                // FORÇAMOS O MISTO COM O VALOR DO BANCO DE DADOS
-                configMock.modoMisto = ehMisto;
+                // AQUI É A MÁGICA: O modo Misto é decidido pelo que o usuário clicou!
+                configMock.modoMisto = isEmulador;
+                // Passamos o resto das configs
+                configMock.modo = configMock.modo || "Mobile";
+                configMock.valor = configMock.valor || "20,00";
+                configMock.nomePainel = configMock.nomePainel || "PHANTOM";
+                configMock.emojiGelNormal = configMock.emojiGelNormal || "🧊";
+                configMock.emojiGelInfinito = configMock.emojiGelInfinito || "♾️";
+                configMock.emojiEmul1 = configMock.emojiEmul1 || "📱";
+                configMock.emojiEmul2 = configMock.emojiEmul2 || "💻";
+                configMock.emojiSair = configMock.emojiSair || "🚪";
 
                 try {
                     if (typeof painelBuilder === "function") {
