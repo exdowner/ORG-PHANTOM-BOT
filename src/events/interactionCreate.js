@@ -1,6 +1,6 @@
 const { EmbedBuilder, MessageFlags, PermissionFlagsBits, ChannelType, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const ranking = require("../systems/ranking.js");
-const filas = require("../systems/filas.js"); // Importa seu sistema de filas
+const filas = require("../systems/filas.js");
 
 module.exports = async (interaction) => {
     // 1. COMANDOS SLASH
@@ -21,7 +21,7 @@ module.exports = async (interaction) => {
 
     // 2. INTERAÇÃO DE BOTÕES
     if (interaction.isButton()) {
-        const { customId, user, guild, channel } = interaction;
+        const { customId, user, guild, channel, message } = interaction;
 
         // --- TICKET DE SUPORTE ---
         if (customId === "abrir_ticket") {
@@ -77,24 +77,33 @@ module.exports = async (interaction) => {
             return;
         }
 
-        // --- SISTEMA DE FILAS (CONECTADO COM SEU SYSTEMS/FILAS.JS) ---
-        if (customId.startsWith("entrar_") || customId === "sair_fila" || customId.startsWith("cancelar_")) {
-            try {
-                // Se o seu sistema de filas exporta uma função para lidar com cliques, chamamos ela aqui:
-                if (typeof filas.handleButton === "function") {
-                    return await filas.handleButton(interaction);
-                } else {
-                    // Fallback caso a função tenha outro nome no seu arquivo filas.js
-                    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-                    return await interaction.editReply({ content: "⚠️ Ação de fila recebida, verifique a integração no seu systems/filas.js" });
-                }
-            } catch (err) {
-                console.error("Erro na fila:", err);
-                if (!interaction.replied && !interaction.deferred) {
-                    return await interaction.reply({ content: "❌ Erro ao processar a fila!", flags: MessageFlags.Ephemeral });
-                }
+        // --- SISTEMA DE FILAS (INTEGRADO COM SEU SYSTEMS/FILAS.JS) ---
+        if (customId.startsWith("entrar_") || customId === "sair_fila") {
+            const painelId = message.id; // Usa o ID da mensagem do painel como referência
+
+            if (customId === "sair_fila") {
+                filas.sairFila(painelId, user);
+                return await interaction.reply({
+                    content: "🚪 Você saiu de todas as filas deste painel com sucesso!",
+                    flags: MessageFlags.Ephemeral
+                });
             }
-            return;
+
+            // Exemplo de customId esperado nos botões de entrar: "entrar_normal", "entrar_infinito", "entrar_1emulador"
+            const tipoFila = customId.replace("entrar_", "");
+            const resultado = filas.entrarFila(painelId, tipoFila, user);
+
+            if (!resultado.ok) {
+                return await interaction.reply({
+                    content: resultado.motivo,
+                    flags: MessageFlags.Ephemeral
+                });
+            }
+
+            return await interaction.reply({
+                content: `✅ Você entrou na fila **${tipoFila.toUpperCase()}** com sucesso!`,
+                flags: MessageFlags.Ephemeral
+            });
         }
 
         // --- BOTÕES DO RANKING ---
