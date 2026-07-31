@@ -234,13 +234,13 @@ module.exports = async (interaction) => {
                 return await interaction.editReply({ content: `✅ <@${user.id}>, entrou na fila!` });
             }
 
-            // --- BOTÕES DE ACEITAR/CANCELAR (COM CORREÇÃO DE TRAVAMENTO) ---
+            // --- BOTÕES DE ACEITAR/CANCELAR (COM REMOÇÃO AUTOMÁTICA DA FILA) ---
             if (customId === "aceitar_partida") {
-                // Já deferiu reply lá em cima, mas vamos garantir que a resposta chegue
                 await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
                 const guild = interaction.guild;
 
                 try {
+                    // 1. Cria o canal de texto
                     const nomeCanal = `partida-${Date.now()}`;
                     const novoCanal = await guild.channels.create({
                         name: nomeCanal,
@@ -250,6 +250,34 @@ module.exports = async (interaction) => {
                     console.log(`✅ CANAL DE TEXTO CRIADO: #${novoCanal.name}`);
                     await interaction.editReply({ content: `✅ **PARTIDA CONFIRMADA!** Canal de texto criado: <#${novoCanal.id}>` });
                     await novoCanal.send(`👋 Bem-vindos à partida!`);
+
+                    // 2. CORREÇÃO AQUI: REMOVER OS JOGADORES DA FILA!
+                    // Pega o painel principal (mensagem que está na tela do canal)
+                    // Nota: o interaction vem da aba de logs, então precisamos buscar o painel original
+                    const mensagemPainel = message; 
+                    const painelId = mensagemPainel.id;
+
+                    // Remove o jogador que clicou em Aceitar
+                    filas.sairFila(painelId, user);
+
+                    // Como o segundo jogador não está no 'interaction', vamos pegar a lista completa e remover todos
+                    // (Isso assume que a fila estava cheia e vamos limpar tudo)
+                    const configReal = pegarConfig();
+                    const isEmulador = mensagemPainel.embeds[0]?.title?.includes("Emulador") || false;
+                    const lista = filas.jogadores(isEmulador ? "1emulador" : "normal", painelId);
+                    
+                    // Remove todos os jogadores encontrados na fila
+                    if (lista && lista.length > 0) {
+                        for (let jogador of lista) {
+                            filas.sairFila(painelId, jogador);
+                        }
+                        console.log(`🧹 FILA LIMPA! Jogadores removidos.`);
+                    }
+
+                    // Atualiza o painel visual para ficar vazio de novo
+                    const novoPainel = painelBuilder(configReal, [], []);
+                    await mensagemPainel.edit(novoPainel).catch(() => {});
+
                 } catch (err) {
                     console.error("❌ ERRO AO CRIAR CANAL DE TEXTO:", err);
                     await interaction.editReply({ content: `❌ Erro ao criar o canal de texto.` });
