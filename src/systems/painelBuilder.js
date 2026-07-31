@@ -21,7 +21,6 @@ module.exports = (config, fila1 = [], fila2 = []) => {
     // SE O BANCO DE DADOS TIVER MODO MISTO ATIVADO
     if (config.modoMisto === true) {
         embed.addFields(
-            // ⬇️ AQUI EU TIRO OS EMOJIS 📱 e 💻 DOS NOMES ⬇️
             { name: `1 Emulador (${fila1.length}/${qtd})`, value: formatarFila(fila1), inline: false },
             { name: `2 Emuladores (${fila2.length}/${qtd})`, value: formatarFila(fila2), inline: false }
         );
@@ -30,12 +29,12 @@ module.exports = (config, fila1 = [], fila2 = []) => {
                 .setCustomId("entrar_1emulador")
                 .setLabel("1 Emulador")
                 .setEmoji(config.emojiEmul1 || "📱")
-                .setStyle(ButtonStyle.Success), // VERDE
+                .setStyle(ButtonStyle.Success), // 🟢 VERDE
             new ButtonBuilder()
                 .setCustomId("entrar_2emuladores")
                 .setLabel("2 Emuladores")
                 .setEmoji(config.emojiEmul2 || "💻")
-                .setStyle(ButtonStyle.Success), // VERDE
+                .setStyle(ButtonStyle.Success), // 🟢 VERDE
             new ButtonBuilder()
                 .setCustomId("sair_fila")
                 .setLabel("Sair")
@@ -43,7 +42,7 @@ module.exports = (config, fila1 = [], fila2 = []) => {
                 .setStyle(ButtonStyle.Danger)
         );
     } else {
-        // SE NÃO ESTIVER MISTO
+        // SE NÃO ESTIVER MISTO (MODO GEL/MOBILE)
         embed.addFields(
             { name: `Gel Normal (${fila1.length}/${qtd})`, value: formatarFila(fila1), inline: false },
             { name: `Gel Infinito (${fila2.length}/${qtd})`, value: formatarFila(fila2), inline: false }
@@ -53,12 +52,12 @@ module.exports = (config, fila1 = [], fila2 = []) => {
                 .setCustomId("entrar_gel_normal")
                 .setLabel("Gel Normal")
                 .setEmoji(config.emojiGelNormal || "🧊")
-                .setStyle(ButtonStyle.Primary), // AZUL
+                .setStyle(ButtonStyle.Primary), // 🔵 AZUL (CORRIGIDO AQUI!)
             new ButtonBuilder()
                 .setCustomId("entrar_gel_inf")
                 .setLabel("Gel Infinito")
                 .setEmoji(config.emojiGelInfinito || "♾️")
-                .setStyle(ButtonStyle.Success), // VERDE
+                .setStyle(ButtonStyle.Success), // 🟢 VERDE
             new ButtonBuilder()
                 .setCustomId("sair_fila")
                 .setLabel("Sair")
