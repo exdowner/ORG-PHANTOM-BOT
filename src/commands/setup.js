@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ButtonBuilder, ButtonStyle, MessageFlags, PermissionFlagsBits } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags, PermissionFlagsBits } = require("discord.js");
 const { pegarConfig } = require("../systems/config.js");
 
 module.exports = {
@@ -11,11 +11,12 @@ module.exports = {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
         const config = pegarConfig();
 
+        // Segurança para não mostrar undefined na quantidade
         if (config.quantidade === undefined || config.quantidade === null) {
             config.quantidade = 2;
         }
 
-        // --- CONSTRUÇÃO DO PAINEL DE PREVIEW ---
+        // O Embed iguaaaalzinho ao da sua foto
         const embed = new EmbedBuilder()
             .setColor("#2b2d31")
             .setTitle(`ORG PHANTOM | Editor (Preview ao Vivo)`)
@@ -28,70 +29,23 @@ module.exports = {
             )
             .setFooter({ text: "Só você pode ver esta mensagem • Ignorar mensagem" });
 
-        // --- CADA MENU EM SUA PRÓPRIA LINHA (ISSO RESOLVE O ERRO DE LARGURA) ---
-
-        // Linha 1: Gel Normal
+        // LINHA 1: Botões principais (Valor, Modo, Quantidade)
         const row1 = new ActionRowBuilder().addComponents(
-            new StringSelectMenuBuilder()
-                .setCustomId("select_emoji_gel_normal")
-                .setPlaceholder("Emoji: Gel Normal")
-                .addOptions(
-                    new StringSelectMenuOptionBuilder().setLabel("Gelo 🧊").setValue("🧊"),
-                    new StringSelectMenuOptionBuilder().setLabel("Diamante 💎").setValue("💎"),
-                    new StringSelectMenuOptionBuilder().setLabel("Bola de Neve ⛄").setValue("⛄"),
-                    new StringSelectMenuOptionBuilder().setLabel("Sem Emoji").setValue("NONE")
-                )
+            new ButtonBuilder().setCustomId("editar_valor").setLabel("Valor").setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId("editar_modo").setLabel("Modo").setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId("editar_quantidade").setLabel("Quantidade").setEmoji("👤").setStyle(ButtonStyle.Secondary)
         );
 
-        // Linha 2: Gel Infinito
+        // LINHA 2: Botões de Emojis Personalizados
         const row2 = new ActionRowBuilder().addComponents(
-            new StringSelectMenuBuilder()
-                .setCustomId("select_emoji_gel_inf")
-                .setPlaceholder("Emoji: Gel Infinito")
-                .addOptions(
-                    new StringSelectMenuOptionBuilder().setLabel("Infinito ♾️").setValue("♾️"),
-                    new StringSelectMenuOptionBuilder().setLabel("Gelo 🧊").setValue("🧊"),
-                    new StringSelectMenuOptionBuilder().setLabel("Diamante 💎").setValue("💎"),
-                    new StringSelectMenuOptionBuilder().setLabel("Sem Emoji").setValue("NONE")
-                )
-        );
-
-        // Linha 3: Emulador 1
-        const row3 = new ActionRowBuilder().addComponents(
-            new StringSelectMenuBuilder()
-                .setCustomId("select_emoji_emul1")
-                .setPlaceholder("Emoji: Emulador 1")
-                .addOptions(
-                    new StringSelectMenuOptionBuilder().setLabel("Celular 📱").setValue("📱"),
-                    new StringSelectMenuOptionBuilder().setLabel("Controle 🎮").setValue("🎮"),
-                    new StringSelectMenuOptionBuilder().setLabel("Foguete 🚀").setValue("🚀"),
-                    new StringSelectMenuOptionBuilder().setLabel("Sem Emoji").setValue("NONE")
-                )
-        );
-
-        // Linha 4: Emulador 2
-        const row4 = new ActionRowBuilder().addComponents(
-            new StringSelectMenuBuilder()
-                .setCustomId("select_emoji_emul2")
-                .setPlaceholder("Emoji: Emulador 2")
-                .addOptions(
-                    new StringSelectMenuOptionBuilder().setLabel("Computador 💻").setValue("💻"),
-                    new StringSelectMenuOptionBuilder().setLabel("Celular 📱").setValue("📱"),
-                    new StringSelectMenuOptionBuilder().setLabel("Controle 🎮").setValue("🎮"),
-                    new StringSelectMenuOptionBuilder().setLabel("Sem Emoji").setValue("NONE")
-                )
-        );
-
-        // Linha 5: Botões de Ação (Ativar Misto e Salvar)
-        const row5 = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId("escolher_emoji_gel_normal").setLabel("Emojis").setStyle(ButtonStyle.Secondary),
             new ButtonBuilder().setCustomId("ativar_misto").setLabel("Ativar Misto").setEmoji("🔄").setStyle(ButtonStyle.Primary),
             new ButtonBuilder().setCustomId("salvar_config").setLabel("Salvar").setStyle(ButtonStyle.Success)
         );
 
-        // IMPORTANTE: A ordem máxima é 5 linhas. Se colocar mais de 5, o Discord dá erro.
         return await interaction.editReply({ 
             embeds: [embed], 
-            components: [row1, row2, row3, row4, row5] 
+            components: [row1, row2] 
         });
     }
 };

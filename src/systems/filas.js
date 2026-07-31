@@ -1,62 +1,51 @@
-const filas = new Map();
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 
-function obterFila(painelId) {
-    if (!filas.has(painelId)) {
-        filas.set(painelId, { 
-            normal: [], 
-            infinito: [], 
-            "1emulador": [], 
-            "2emuladores": [],
-            "3emuladores": [] 
-        });
-    }
-    return filas.get(painelId);
-}
+module.exports = (config, fila1 = [], fila2 = []) => {
+    const qtd = config.quantidade || 2;
+    const titulo = `${config.modo || "Mobile"} | ${config.valor || "5,00"}`;
+    const urlImagem = "https://media.discordapp.net/attachments/1523200272158036008/1531973873116123276/Design_sem_nome.png";
 
-function entrarFila(painelId, tipo, membro) {
-    const filaPainel = obterFila(painelId);
-    
-    const userId = membro.id || membro.user?.id || membro;
-    const nick = membro.displayName || membro.user?.username || membro.username || "Jogador";
-    
-    const jogador = { id: userId, nick: nick };
+    const formatarFila = (fila) => {
+        if (!fila || fila.length === 0) return "Vazio";
+        return fila.map(j => `<@${j.id}>`).join("\n");
+    };
 
-    if (!filaPainel[tipo]) {
-        filaPainel[tipo] = [];
-    }
+    const embed = new EmbedBuilder()
+        .setColor("#2b2d31")
+        .setTitle(titulo)
+        .setThumbnail(urlImagem)
+        .setFooter({ text: "ORG PHANTOM | Sistema de Partidas" })
+        .addFields(
+            {
+                name: `Gel Normal (${fila1.length}/${qtd})`,
+                value: formatarFila(fila1),
+                inline: false
+            },
+            {
+                name: `Gel Infinito (${fila2.length}/${qtd})`,
+                value: formatarFila(fila2),
+                inline: false
+            }
+        );
 
-    const jaEmAlgumaFila = Object.values(filaPainel).some(lista => 
-        Array.isArray(lista) && lista.some(j => (j.id || j) === jogador.id)
-    );
+    const row = new ActionRowBuilder()
+        .addComponents(
+            new ButtonBuilder()
+                .setCustomId("entrar_gel_normal")
+                .setLabel("Gel Normal")
+                .setEmoji(config.emojiGelNormal || "🧊")
+                .setStyle(ButtonStyle.Primary),
+            new ButtonBuilder()
+                .setCustomId("entrar_gel_inf")
+                .setLabel("Gel Infinito")
+                .setEmoji(config.emojiGelInfinito || "♾️")
+                .setStyle(ButtonStyle.Primary),
+            new ButtonBuilder()
+                .setCustomId("sair_fila")
+                .setLabel("Sair")
+                .setEmoji(config.emojiSair || "🚪")
+                .setStyle(ButtonStyle.Danger)
+        );
 
-    if (jaEmAlgumaFila) {
-        return { ok: false, motivo: "⚠️ Você já está em uma das filas deste painel! Saia primeiro para trocar." };
-    }
-
-    filaPainel[tipo].push(jogador);
-    return { ok: true };
-}
-
-function sairFila(painelId, membro) {
-    const filaPainel = obterFila(painelId);
-    const userId = membro.id || membro.user?.id || membro;
-
-    for (const chave in filaPainel) {
-        if (Array.isArray(filaPainel[chave])) {
-            filaPainel[chave] = filaPainel[chave].filter(j => (j.id || j) !== userId);
-        }
-    }
-
-    return true;
-}
-
-function jogadores(tipo, painelId) {
-    const filaPainel = obterFila(painelId);
-    return filaPainel[tipo] || [];
-}
-
-module.exports = {
-    entrarFila,
-    sairFila,
-    jogadores
+    return { embeds: [embed], components: [row] };
 };

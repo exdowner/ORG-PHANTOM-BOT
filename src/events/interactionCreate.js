@@ -7,8 +7,7 @@ const {
     ModalBuilder, 
     TextInputBuilder, 
     TextInputStyle,
-    StringSelectMenuBuilder,
-    StringSelectMenuOptionBuilder
+    StringSelectMenuBuilder
 } = require("discord.js");
 const ranking = require("../systems/ranking.js");
 const filas = require("../systems/filas.js");
@@ -20,10 +19,10 @@ const salvarConfig = configModule.salvarConfig || (() => ({}));
 
 module.exports = async (interaction) => {
     try {
+        // Comandos Slash
         if (interaction.isChatInputCommand()) {
             const command = interaction.client.commands.get(interaction.commandName);
             if (!command) return;
-
             try {
                 await command.execute(interaction);
             } catch (error) {
@@ -35,7 +34,7 @@ module.exports = async (interaction) => {
             return;
         }
 
-        // --- TRATAMENTO DOS MODAIS (Valor, Modo, Qtd) + PREVIEW AO VIVO ---
+        // Modais (Editar Valor, Modo, Quantidade)
         if (interaction.isModalSubmit()) {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
             const config = pegarConfig();
@@ -51,6 +50,7 @@ module.exports = async (interaction) => {
 
             salvarConfig(config);
 
+            // Atualizar o Preview na tela em Tempo Real
             const msgOriginal = interaction.message;
             if (msgOriginal && msgOriginal.embeds.length > 0) {
                 const embedAtualizado = new EmbedBuilder()
@@ -72,50 +72,28 @@ module.exports = async (interaction) => {
             });
         }
 
-        // --- TRATAMENTO DOS MENUS DE SELEÇÃO DE EMOJIS ---
+        // Menus de Seleção de Emojis (Personalizados do Servidor)
         if (interaction.isStringSelectMenu()) {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
             const config = pegarConfig();
             const valorEscolhido = interaction.values[0];
-            const emojiFinal = valorEscolhido === "NONE" ? "" : valorEscolhido;
 
-            if (interaction.customId === "select_emoji_gel_normal") {
-                config.emojiGelNormal = emojiFinal;
-            } else if (interaction.customId === "select_emoji_gel_inf") {
-                config.emojiGelInfinito = emojiFinal;
-            } else if (interaction.customId === "select_emoji_emul1") {
-                config.emojiEmul1 = emojiFinal;
-            } else if (interaction.customId === "select_emoji_emul2") {
-                config.emojiEmul2 = emojiFinal;
-            } else if (interaction.customId === "select_emoji_sair") {
-                config.emojiSair = emojiFinal;
-            }
+            if (interaction.customId === "select_emoji_gel_normal") config.emojiGelNormal = valorEscolhido;
+            if (interaction.customId === "select_emoji_gel_inf") config.emojiGelInfinito = valorEscolhido;
+            if (interaction.customId === "select_emoji_emul1") config.emojiEmul1 = valorEscolhido;
+            if (interaction.customId === "select_emoji_emul2") config.emojiEmul2 = valorEscolhido;
+            if (interaction.customId === "select_emoji_sair") config.emojiSair = valorEscolhido;
 
             salvarConfig(config);
-
-            const msgOriginal = interaction.message;
-            if (msgOriginal && msgOriginal.embeds.length > 0) {
-                const embedAtualizado = new EmbedBuilder()
-                    .setColor("#2b2d31")
-                    .setTitle(`ORG PHANTOM | Editor (Preview ao Vivo)`)
-                    .setDescription("As mudanças aparecem aqui em tempo real")
-                    .addFields(
-                        { name: "**Modo:**", value: `${config.modo || "mobile"}`, inline: false },
-                        { name: "**Valor:**", value: `${config.valor || "20,00"}`, inline: false },
-                        { name: "**Quantidade:**", value: `${config.quantidade || 2} jogadores`, inline: false },
-                        { name: "**Misto:**", value: config.modoMisto ? "✅ **ATIVADO**" : "❌ **DESATIVADO**", inline: false }
-                    )
-                    .setFooter({ text: "Só você pode ver esta mensagem • Ignorar mensagem" });
-                await msgOriginal.edit({ embeds: [embedAtualizado] }).catch(() => {});
-            }
 
             return await interaction.editReply({ content: `✅ Emoji atualizado com sucesso!` });
         }
 
-        // --- TRATAMENTO DOS BOTÕES ---
+        // Botões
         if (interaction.isButton()) {
             const { customId, user, guild, channel, message } = interaction;
 
+            // Abrir Modais
             if (customId === "editar_valor") {
                 const modal = new ModalBuilder().setCustomId("modal_editar_valor").setTitle("Editar Valor");
                 const input = new TextInputBuilder().setCustomId("input_valor").setLabel("Novo Valor").setStyle(TextInputStyle.Short).setRequired(true);
@@ -137,13 +115,39 @@ module.exports = async (interaction) => {
                 return await interaction.showModal(modal);
             }
 
+            // Abrir Lista de Emojis Personalizados do Servidor
+            if (customId.startsWith("escolher_emoji_")) {
+                const tipo = customId.replace("escolher_emoji_", "");
+                const emojisDoServidor = guild.emojis.cache.first(25);
+
+                if (!emojisDoServidor.length) {
+                    return await interaction.reply({ content: "⚠️ Este servidor não possui emojis personalizados!", flags: MessageFlags.Ephemeral });
+                }
+
+                const selectMenu = new StringSelectMenuBuilder()
+                    .setCustomId(`select_emoji_${tipo}`)
+                    .setPlaceholder("Selecione um emoji do servidor")
+                    .addOptions(
+                        emojisDoServidor.map(e => ({
+                            label: e.name,
+                            value: `<:${e.name}:${e.id}>`,
+                            emoji: e.id
+                        }))
+                    );
+
+                const row = new ActionRowBuilder().addComponents(selectMenu);
+                return await interaction.reply({ content: "Escolha o emoji abaixo:", components: [row], flags: MessageFlags.Ephemeral });
+            }
+
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
 
+            // Ativar Misto
             if (customId === "ativar_misto") {
                 const config = pegarConfig();
                 config.modoMisto = !config.modoMisto;
                 salvarConfig(config);
 
+                // Atualizar Preview
                 const msgOriginal = interaction.message;
                 if (msgOriginal && msgOriginal.embeds.length > 0) {
                     const embedAtualizado = new EmbedBuilder()
@@ -162,10 +166,12 @@ module.exports = async (interaction) => {
                 return await interaction.editReply({ content: `🔄 Modo misto agora está: **${config.modoMisto ? "ATIVADO" : "DESATIVADO"}**` });
             }
 
+            // Salvar
             if (customId === "salvar_config") {
                 return await interaction.editReply({ content: "✅ Configurações salvas e aplicadas com sucesso!" });
             }
 
+            // Lógica das Filas (Entrar/Sair) - Mantendo o sistema original intacto
             if (customId.startsWith("entrar_") || customId === "sair_fila") {
                 const painelId = message.id;
                 let tipoFila = customId.replace("entrar_", "");
@@ -205,6 +211,7 @@ module.exports = async (interaction) => {
                 return await interaction.editReply({ content: `✅ <@${user.id}>, você entrou na fila!` });
             }
 
+            // Perfil e Ranking
             if (customId === "btn_meu_perfil") {
                 const perfil = ranking.pegarPerfil(user.id);
                 const total = perfil.vitorias + perfil.derrotas;
@@ -230,9 +237,5 @@ module.exports = async (interaction) => {
         }
     } catch (err) {
         console.error("Erro geral na interação:", err);
-        // Evita que o bot trave por completo caso algo dê errado
-        if (!interaction.replied && !interaction.deferred) {
-            await interaction.reply({ content: "❌ Ocorreu um erro interno.", flags: MessageFlags.Ephemeral }).catch(() => {});
-        }
     }
 };
