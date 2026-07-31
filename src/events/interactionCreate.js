@@ -33,12 +33,13 @@ module.exports = async (interaction) => {
             return;
         }
 
-        // --- MODAIS (Preview ao Vivo) ---
         if (interaction.isModalSubmit()) {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
             const config = pegarConfig();
 
-            if (interaction.customId === "modal_editar_valor") {
+            if (interaction.customId === "modal_editar_nome_painel") {
+                config.nomePainel = interaction.fields.getTextInputValue("input_nome_painel");
+            } else if (interaction.customId === "modal_editar_valor") {
                 config.valor = interaction.fields.getTextInputValue("input_valor");
             } else if (interaction.customId === "modal_editar_modo") {
                 config.modo = interaction.fields.getTextInputValue("input_modo");
@@ -56,21 +57,19 @@ module.exports = async (interaction) => {
                     .setTitle(`ORG PHANTOM | Editor (Preview ao Vivo)`)
                     .setDescription("As mudanças aparecem aqui em tempo real")
                     .addFields(
-                        { name: "**Modo:**", value: `${config.modo || "mobile"}`, inline: false },
-                        { name: "**Valor:**", value: `${config.valor || "20,00"}`, inline: false },
-                        { name: "**Quantidade:**", value: `${config.quantidade || 2} jogadores`, inline: false },
-                        { name: "**Misto:**", value: config.modoMisto ? "✅ **ATIVADO**" : "❌ **DESATIVADO**", inline: false }
+                        { name: "**📛 Nome do Painel:**", value: `\`${config.nomePainel || "PHANTOM"}\``, inline: false },
+                        { name: "**🎮 Modo:**", value: `\`${config.modo || "Mobile"}\``, inline: true },
+                        { name: "**💰 Valor:**", value: `\`${config.valor || "20,00"}\``, inline: true },
+                        { name: "**👥 Quantidade:**", value: `\`${config.quantidade} jogadores\``, inline: true },
+                        { name: "**🔀 Misto:**", value: config.modoMisto ? "✅ Ativado" : "❌ Desativado", inline: false }
                     )
                     .setFooter({ text: "Só você pode ver esta mensagem • Ignorar mensagem" });
                 await msgOriginal.edit({ embeds: [embedAtualizado] }).catch(() => {});
             }
 
-            return await interaction.editReply({ 
-                content: "✅ Configuração alterada com sucesso! O painel de preview foi atualizado." 
-            });
+            return await interaction.editReply({ content: "✅ Configuração alterada!" });
         }
 
-        // --- MENUS DE EMOJIS (AQUI ESTÃO OS 5 SEPARADOS) ---
         if (interaction.isStringSelectMenu()) {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
             const config = pegarConfig();
@@ -83,13 +82,18 @@ module.exports = async (interaction) => {
             if (interaction.customId === "select_emoji_sair") config.emojiSair = valorEscolhido;
 
             salvarConfig(config);
-
-            return await interaction.editReply({ content: `✅ Emoji atualizado com sucesso!` });
+            return await interaction.editReply({ content: `✅ Emoji atualizado!` });
         }
 
-        // --- BOTÕES ---
         if (interaction.isButton()) {
             const { customId, user, guild, channel, message } = interaction;
+
+            if (customId === "editar_nome_painel") {
+                const modal = new ModalBuilder().setCustomId("modal_editar_nome_painel").setTitle("Editar Nome");
+                const input = new TextInputBuilder().setCustomId("input_nome_painel").setLabel("Nome do Painel").setStyle(TextInputStyle.Short).setRequired(true);
+                modal.addComponents(new ActionRowBuilder().addComponents(input));
+                return await interaction.showModal(modal);
+            }
 
             if (customId === "editar_valor") {
                 const modal = new ModalBuilder().setCustomId("modal_editar_valor").setTitle("Editar Valor");
@@ -107,18 +111,17 @@ module.exports = async (interaction) => {
 
             if (customId === "editar_quantidade") {
                 const modal = new ModalBuilder().setCustomId("modal_editar_quantidade").setTitle("Editar Quantidade");
-                const input = new TextInputBuilder().setCustomId("input_quantidade").setLabel("Quantidade por time").setStyle(TextInputStyle.Short).setRequired(true);
+                const input = new TextInputBuilder().setCustomId("input_quantidade").setLabel("Nova Quantidade").setStyle(TextInputStyle.Short).setRequired(true);
                 modal.addComponents(new ActionRowBuilder().addComponents(input));
                 return await interaction.showModal(modal);
             }
 
-            // --- BOTÕES QUE ABREM OS 5 MENUS DE EMOJIS DO SERVIDOR ---
             if (customId.startsWith("escolher_emoji_")) {
                 const tipo = customId.replace("escolher_emoji_", "");
                 const emojisDoServidor = guild.emojis.cache.first(25);
 
                 if (!emojisDoServidor.length) {
-                    return await interaction.reply({ content: "⚠️ Este servidor não possui emojis personalizados!", flags: MessageFlags.Ephemeral });
+                    return await interaction.reply({ content: "⚠️ Sem emojis personalizados!", flags: MessageFlags.Ephemeral });
                 }
 
                 const selectMenu = new StringSelectMenuBuilder()
@@ -133,7 +136,7 @@ module.exports = async (interaction) => {
                     );
 
                 const row = new ActionRowBuilder().addComponents(selectMenu);
-                return await interaction.reply({ content: "Escolha o emoji abaixo:", components: [row], flags: MessageFlags.Ephemeral });
+                return await interaction.reply({ content: "Escolha o emoji:", components: [row], flags: MessageFlags.Ephemeral });
             }
 
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
@@ -150,22 +153,22 @@ module.exports = async (interaction) => {
                         .setTitle(`ORG PHANTOM | Editor (Preview ao Vivo)`)
                         .setDescription("As mudanças aparecem aqui em tempo real")
                         .addFields(
-                            { name: "**Modo:**", value: `${config.modo || "mobile"}`, inline: false },
-                            { name: "**Valor:**", value: `${config.valor || "20,00"}`, inline: false },
-                            { name: "**Quantidade:**", value: `${config.quantidade || 2} jogadores`, inline: false },
-                            { name: "**Misto:**", value: config.modoMisto ? "✅ **ATIVADO**" : "❌ **DESATIVADO**", inline: false }
+                            { name: "**📛 Nome do Painel:**", value: `\`${config.nomePainel || "PHANTOM"}\``, inline: false },
+                            { name: "**🎮 Modo:**", value: `\`${config.modo || "Mobile"}\``, inline: true },
+                            { name: "**💰 Valor:**", value: `\`${config.valor || "20,00"}\``, inline: true },
+                            { name: "**👥 Quantidade:**", value: `\`${config.quantidade} jogadores\``, inline: true },
+                            { name: "**🔀 Misto:**", value: config.modoMisto ? "✅ Ativado" : "❌ Desativado", inline: false }
                         )
                         .setFooter({ text: "Só você pode ver esta mensagem • Ignorar mensagem" });
                     await msgOriginal.edit({ embeds: [embedAtualizado] }).catch(() => {});
                 }
-                return await interaction.editReply({ content: `🔄 Modo misto agora está: **${config.modoMisto ? "ATIVADO" : "DESATIVADO"}**` });
+                return await interaction.editReply({ content: `🔄 Misto: ${config.modoMisto ? "Ativado" : "Desativado"}` });
             }
 
             if (customId === "salvar_config") {
-                return await interaction.editReply({ content: "✅ Configurações salvas e aplicadas com sucesso!" });
+                return await interaction.editReply({ content: "✅ Salvo!" });
             }
 
-            // --- FILAS ---
             if (customId.startsWith("entrar_") || customId === "sair_fila") {
                 const painelId = message.id;
                 let tipoFila = customId.replace("entrar_", "");
@@ -200,9 +203,9 @@ module.exports = async (interaction) => {
                 }
 
                 if (customId === "sair_fila") {
-                    return await interaction.editReply({ content: `🚪 <@${user.id}>, você saiu de todas as filas!` });
+                    return await interaction.editReply({ content: `🚪 <@${user.id}>, saiu da fila!` });
                 }
-                return await interaction.editReply({ content: `✅ <@${user.id}>, você entrou na fila!` });
+                return await interaction.editReply({ content: `✅ <@${user.id}>, entrou na fila!` });
             }
 
             if (customId === "btn_meu_perfil") {
