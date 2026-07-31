@@ -35,6 +35,7 @@ module.exports = async (interaction) => {
             return;
         }
 
+        // --- MODAIS (Editar Nome, Valor, Modo, Qtd) ---
         if (interaction.isModalSubmit()) {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
             const config = pegarConfig();
@@ -52,6 +53,7 @@ module.exports = async (interaction) => {
 
             salvarConfig(config);
 
+            // Atualiza o preview do /setup
             const msgOriginal = interaction.message;
             if (msgOriginal && msgOriginal.embeds.length > 0) {
                 const novoPreview = painelBuilder(config, [], []);
@@ -61,6 +63,7 @@ module.exports = async (interaction) => {
             return await interaction.editReply({ content: "✅ Configuração alterada!" });
         }
 
+        // --- MENUS DE EMOJIS ---
         if (interaction.isStringSelectMenu()) {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
             const config = pegarConfig();
@@ -76,9 +79,11 @@ module.exports = async (interaction) => {
             return await interaction.editReply({ content: `✅ Emoji atualizado!` });
         }
 
+        // --- BOTÕES ---
         if (interaction.isButton()) {
             const { customId, user, guild, channel, message } = interaction;
 
+            // --- BOTÕES DE EDIÇÃO DO /SETUP ---
             if (customId === "editar_nome_painel") {
                 const modal = new ModalBuilder().setCustomId("modal_editar_nome_painel").setTitle("Editar Nome");
                 const input = new TextInputBuilder().setCustomId("input_nome_painel").setLabel("Nome do Painel").setStyle(TextInputStyle.Short).setRequired(true);
@@ -107,6 +112,23 @@ module.exports = async (interaction) => {
                 return await interaction.showModal(modal);
             }
 
+            if (customId === "ativar_misto") {
+                const config = pegarConfig();
+                config.modoMisto = !config.modoMisto;
+                salvarConfig(config);
+
+                const msgOriginal = interaction.message;
+                if (msgOriginal && msgOriginal.embeds.length > 0) {
+                    const novoPreview = painelBuilder(config, [], []);
+                    await msgOriginal.edit({ embeds: novoPreview.embeds }).catch(() => {});
+                }
+                return await interaction.editReply({ content: `🔄 Misto: ${config.modoMisto ? "Ativado" : "Desativado"}` });
+            }
+
+            if (customId === "salvar_config") {
+                return await interaction.editReply({ content: "✅ Salvo!" });
+            }
+
             if (customId.startsWith("escolher_emoji_")) {
                 const tipo = customId.replace("escolher_emoji_", "");
                 const emojisDoServidor = guild.emojis.cache.first(25);
@@ -132,26 +154,9 @@ module.exports = async (interaction) => {
 
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
 
-            if (customId === "ativar_misto") {
-                const config = pegarConfig();
-                config.modoMisto = !config.modoMisto;
-                salvarConfig(config);
-
-                const msgOriginal = interaction.message;
-                if (msgOriginal && msgOriginal.embeds.length > 0) {
-                    const novoPreview = painelBuilder(config, [], []);
-                    await msgOriginal.edit({ embeds: novoPreview.embeds }).catch(() => {});
-                }
-                return await interaction.editReply({ content: `🔄 Misto: ${config.modoMisto ? "Ativado" : "Desativado"}` });
-            }
-
-            if (customId === "salvar_config") {
-                return await interaction.editReply({ content: "✅ Salvo!" });
-            }
-
-            // --- Lógica das Filas (Entrar/Sair) ---
+            // --- BOTÕES DE FILA (ENTRAR/SAIR) ---
             if (customId.startsWith("entrar_") || customId === "sair_fila") {
-                const painelId = message.id; // ESSA LINHA É CRUCIAL! O ID DA MENSAGEM
+                const painelId = message.id; // ID da mensagem do painel
                 let tipoFila = customId.replace("entrar_", "");
                 
                 const isEmulador = tipoFila.includes("emulador") || tipoFila.includes("emuladores");
@@ -159,7 +164,6 @@ module.exports = async (interaction) => {
                 let nomeFila = tipoFila;
                 if (tipoFila === "gel_normal") nomeFila = "normal";
                 else if (tipoFila === "gel_inf") nomeFila = "infinito";
-                // Para emulador, mantemos o nome original "1emulador" e "2emuladores"
                 
                 if (typeof filas.sairFila !== 'function' || typeof filas.entrarFila !== 'function') {
                     return await interaction.editReply({ content: "❌ Erro: Arquivo de filas não configurado corretamente." });
@@ -178,7 +182,7 @@ module.exports = async (interaction) => {
                 // Pega a configuração real salva no banco
                 const configReal = pegarConfig();
 
-                // Passa os valores REAIS, sem "|| padrão"!!
+                // Passa os valores REAIS (sem cair no padrão)
                 const configMock = {
                     modoMisto: isEmulador,
                     modo: configReal.modo || "Mobile",
@@ -201,14 +205,12 @@ module.exports = async (interaction) => {
                     console.error("Erro ao atualizar painel público:", err);
                 }
 
-                // ================================================================
-                // Lógica de envio para logs
-                // ================================================================
+                // --- Lógica de fim de fila (Envia para o canal de logs) ---
                 const qtd = configMock.quantidade || 2;
                 const filaAtual = lista1.length >= qtd ? lista1 : (lista2.length >= qtd ? lista2 : null);
 
                 if (filaAtual && filaAtual.length >= qtd) {
-                    console.log("🎯🎯🎯 FILA COMPLETA! ENVIANDO PARA ABA DE LOGS...");
+                    console.log("🎯🎯🎯 FILA COMPLETA!");
                     const ID_CANAL_LOGS = "1532001733750952135"; 
                     const canalLogs = guild.channels.cache.get(ID_CANAL_LOGS);
 
@@ -227,11 +229,11 @@ module.exports = async (interaction) => {
                             console.log("✅ Mensagem enviada para a aba de logs!");
                         } catch (err) {
                             console.error("❌ Erro ao enviar para a aba de logs:", err);
-                            await interaction.channel.send({ content: `❌ Erro ao enviar notificação para a aba de logs.` });
+                            await interaction.channel.send({ content: `❌ Erro ao enviar notificação.` });
                         }
                     } else {
                         console.error(`❌ CANAL DE LOGS NÃO ENCONTRADO! ID: ${ID_CANAL_LOGS}`);
-                        await interaction.channel.send({ content: `❌ Canal de logs não encontrado! Verifique o ID.` });
+                        await interaction.channel.send({ content: `❌ Canal de logs não encontrado!` });
                     }
                 }
 
@@ -241,9 +243,7 @@ module.exports = async (interaction) => {
                 return await interaction.editReply({ content: `✅ <@${user.id}>, entrou na fila!` });
             }
 
-            // ================================================================
-            // Botões de Aceitar e Cancelar
-            // ================================================================
+            // --- BOTÕES DE ACEITAR/CANCELAR PARTIDA ---
             if (customId === "aceitar_partida") {
                 await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
                 const guild = interaction.guild;
@@ -273,6 +273,7 @@ module.exports = async (interaction) => {
                 await interaction.editReply({ content: `❌ Partida cancelada pelo jogador.` });
             }
 
+            // --- PERFIL E RANKING ---
             if (customId === "btn_meu_perfil") {
                 const perfil = ranking.pegarPerfil(user.id);
                 const total = perfil.vitorias + perfil.derrotas;
