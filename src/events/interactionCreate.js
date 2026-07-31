@@ -174,18 +174,20 @@ module.exports = async (interaction) => {
                 const lista1 = filas.jogadores(isEmulador ? "1emulador" : "normal", painelId);
                 const lista2 = filas.jogadores(isEmulador ? "2emuladores" : "infinito", painelId);
                 
-                const configReal = pegarConfig(); // Pega a config salva no banco
+                // Pega a configuração real salva no banco
+                const configReal = pegarConfig();
 
+                // Passa os valores REAIS, sem "|| padrão"!!
                 const configMock = {
                     modoMisto: isEmulador,
                     modo: configReal.modo || "Mobile",
                     valor: configReal.valor || "20,00",
                     nomePainel: configReal.nomePainel || "PHANTOM",
-                    emojiGelNormal: configReal.emojiGelNormal || "🧊",
-                    emojiGelInfinito: configReal.emojiGelInfinito || "♾️",
-                    emojiEmul1: configReal.emojiEmul1 || "📱",
-                    emojiEmul2: configReal.emojiEmul2 || "💻",
-                    emojiSair: configReal.emojiSair || "🚪",
+                    emojiGelNormal: configReal.emojiGelNormal,
+                    emojiGelInfinito: configReal.emojiGelInfinito,
+                    emojiEmul1: configReal.emojiEmul1,
+                    emojiEmul2: configReal.emojiEmul2,
+                    emojiSair: configReal.emojiSair,
                     quantidade: configReal.quantidade || 2
                 };
 
@@ -199,39 +201,28 @@ module.exports = async (interaction) => {
                 }
 
                 // ================================================================
-                // NOVA LÓGICA DE CRIAÇÃO DE CANAL (TEXTO) E BOTÕES
+                // Lógica de envio para logs
                 // ================================================================
                 const qtd = configMock.quantidade || 2;
                 const filaAtual = lista1.length >= qtd ? lista1 : (lista2.length >= qtd ? lista2 : null);
 
                 if (filaAtual && filaAtual.length >= qtd) {
                     console.log("🎯🎯🎯 FILA COMPLETA! ENVIANDO PARA ABA DE LOGS...");
-
-                    // ID DO CANAL DE LOGS (Você pediu esse ID)
                     const ID_CANAL_LOGS = "1532001733750952135"; 
                     const canalLogs = guild.channels.cache.get(ID_CANAL_LOGS);
 
                     if (canalLogs) {
                         try {
-                            // Cria os botões de Aceitar / Cancelar
                             const rowBotoes = new ActionRowBuilder()
                                 .addComponents(
-                                    new ButtonBuilder()
-                                        .setCustomId("aceitar_partida")
-                                        .setLabel("✅ Aceitar")
-                                        .setStyle(ButtonStyle.Success),
-                                    new ButtonBuilder()
-                                        .setCustomId("cancelar_partida")
-                                        .setLabel("❌ Cancelar")
-                                        .setStyle(ButtonStyle.Danger)
+                                    new ButtonBuilder().setCustomId("aceitar_partida").setLabel("✅ Aceitar").setStyle(ButtonStyle.Success),
+                                    new ButtonBuilder().setCustomId("cancelar_partida").setLabel("❌ Cancelar").setStyle(ButtonStyle.Danger)
                                 );
 
-                            // Envia a mensagem para a aba de logs com os botões
                             await canalLogs.send({
                                 content: `🟢 **NOVA PARTIDA FORMADA!**\n👥 Jogadores: ${filaAtual.map(j => `<@${j.id}>`).join(" e ")}\n📊 Fila: ${isEmulador ? "Mista" : "Gel"} (${qtd}vs${qtd})\n\nClique em **Aceitar** para criar o canal de texto.`,
                                 components: [rowBotoes]
                             });
-
                             console.log("✅ Mensagem enviada para a aba de logs!");
                         } catch (err) {
                             console.error("❌ Erro ao enviar para a aba de logs:", err);
@@ -242,7 +233,6 @@ module.exports = async (interaction) => {
                         await interaction.channel.send({ content: `❌ Canal de logs não encontrado! Verifique o ID.` });
                     }
                 }
-                // ================================================================
 
                 if (customId === "sair_fila") {
                     return await interaction.editReply({ content: `🚪 <@${user.id}>, saiu da fila!` });
@@ -251,35 +241,26 @@ module.exports = async (interaction) => {
             }
 
             // ================================================================
-            // NOVOS BOTÕES (ACEITAR E CANCELAR PARTIDA)
+            // Botões de Aceitar e Cancelar
             // ================================================================
             if (customId === "aceitar_partida") {
                 await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
-                
-                // Pega o guild do interaction
                 const guild = interaction.guild;
 
                 try {
-                    // Cria o canal de TEXTO (não voz)
                     const nomeCanal = `partida-${Date.now()}`;
                     const novoCanal = await guild.channels.create({
                         name: nomeCanal,
-                        type: ChannelType.GuildText, // AGORA É TEXTO!
+                        type: ChannelType.GuildText,
                         permissionOverwrites: [
                             { id: guild.id, deny: [PermissionFlagsBits.ViewChannel] },
-                            // Permissões para os 2 jogadores
-                            { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] },
-                            // NOTA: Para dar permissão ao outro jogador, você teria que ter o ID dele salvo em algum lugar.
-                            // Como simplificação, vamos apenas criar o canal e avisar.
+                            { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] }
                         ]
                     });
 
                     console.log(`✅ CANAL DE TEXTO CRIADO: #${novoCanal.name}`);
                     await interaction.editReply({ content: `✅ **PARTIDA CONFIRMADA!** Canal de texto criado: <#${novoCanal.id}>` });
-                    
-                    // (Opcional) Aqui você pode enviar uma mensagem no novo canal
                     await novoCanal.send(`👋 Bem-vindos à partida!`);
-
                 } catch (err) {
                     console.error("❌ ERRO AO CRIAR CANAL DE TEXTO:", err);
                     await interaction.editReply({ content: `❌ Erro ao criar o canal de texto.` });
@@ -289,9 +270,7 @@ module.exports = async (interaction) => {
             if (customId === "cancelar_partida") {
                 await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
                 await interaction.editReply({ content: `❌ Partida cancelada pelo jogador.` });
-                // Aqui você pode adicionar lógica para remover os jogadores da fila novamente
             }
-            // ================================================================
 
             if (customId === "btn_meu_perfil") {
                 const perfil = ranking.pegarPerfil(user.id);
