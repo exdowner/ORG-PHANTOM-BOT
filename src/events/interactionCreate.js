@@ -1,8 +1,9 @@
 const { EmbedBuilder, MessageFlags, PermissionFlagsBits, ChannelType, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const ranking = require("../systems/ranking.js");
+const filas = require("../systems/filas.js"); // Importa seu sistema de filas
 
 module.exports = async (interaction) => {
-    // 1. TRATAMENTO DE COMANDOS SLASH
+    // 1. COMANDOS SLASH
     if (interaction.isChatInputCommand()) {
         const command = interaction.client.commands.get(interaction.commandName);
         if (!command) return;
@@ -11,21 +12,18 @@ module.exports = async (interaction) => {
             await command.execute(interaction);
         } catch (error) {
             console.error(`Erro em /${interaction.commandName}:`, error);
-            const msg = { content: "❌ Ocorreu um erro ao executar este comando!", flags: MessageFlags.Ephemeral };
-            if (interaction.replied || interaction.deferred) {
-                await interaction.followUp(msg);
-            } else {
-                await interaction.reply(msg);
-            }
+            const msg = { content: "❌ Erro ao executar comando!", flags: MessageFlags.Ephemeral };
+            if (interaction.replied || interaction.deferred) await interaction.followUp(msg);
+            else await interaction.reply(msg);
         }
         return;
     }
 
-    // 2. TRATAMENTO DE BOTÕES (COM RESPOSTA INSTANTÂNEA)
+    // 2. INTERAÇÃO DE BOTÕES
     if (interaction.isButton()) {
         const { customId, user, guild, channel } = interaction;
 
-        // --- BOTÃO DE TICKET (SUPORTE) ---
+        // --- TICKET DE SUPORTE ---
         if (customId === "abrir_ticket") {
             const canalExistente = guild.channels.cache.find(c => c.name === `ticket-${user.username.toLowerCase()}`);
             if (canalExistente) {
@@ -63,38 +61,43 @@ module.exports = async (interaction) => {
                 );
 
                 await canalTicket.send({ content: `<@${user.id}>`, embeds: [embedTicket], components: [rowFechar] });
-                return await interaction.editReply({ content: `✅ Seu ticket foi criado com sucesso em <#${canalTicket.id}>!` });
+                return await interaction.editReply({ content: `✅ Ticket criado em <#${canalTicket.id}>!` });
             } catch (err) {
-                console.error("Erro ao criar ticket:", err);
-                return await interaction.editReply({ content: "❌ Ocorreu um erro ao criar o seu ticket!" });
+                console.error(err);
+                return await interaction.editReply({ content: "❌ Erro ao criar canal de ticket!" });
             }
         }
 
-        // --- FECHAR TICKET NO CANAL ---
         if (customId === "fechar_ticket_canal") {
             if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
-                return await interaction.reply({ content: "❌ Apenas administradores podem encerrar este ticket!", flags: MessageFlags.Ephemeral });
+                return await interaction.reply({ content: "❌ Apenas ADM pode encerrar o ticket!", flags: MessageFlags.Ephemeral });
             }
-            await interaction.reply({ content: "🔒 Encerrando e deletando este ticket em 5 segundos..." });
+            await interaction.reply({ content: "🔒 Encerrando e deletando em 5 segundos..." });
             setTimeout(() => channel.delete().catch(() => {}), 5000);
             return;
         }
 
-        // --- BOTÕES DE FILAS / APOSTAS ---
-        if (
-            customId.startsWith("entrar_") || 
-            customId === "sair_fila" || 
-            customId.startsWith("cancelar_") || 
-            customId.startsWith("encerrar_")
-        ) {
-            // Responde imediatamente para o Discord não dar timeout de 3 segundos
-            return await interaction.reply({
-                content: `✅ Ação processada com sucesso!`,
-                flags: MessageFlags.Ephemeral
-            });
+        // --- SISTEMA DE FILAS (CONECTADO COM SEU SYSTEMS/FILAS.JS) ---
+        if (customId.startsWith("entrar_") || customId === "sair_fila" || customId.startsWith("cancelar_")) {
+            try {
+                // Se o seu sistema de filas exporta uma função para lidar com cliques, chamamos ela aqui:
+                if (typeof filas.handleButton === "function") {
+                    return await filas.handleButton(interaction);
+                } else {
+                    // Fallback caso a função tenha outro nome no seu arquivo filas.js
+                    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+                    return await interaction.editReply({ content: "⚠️ Ação de fila recebida, verifique a integração no seu systems/filas.js" });
+                }
+            } catch (err) {
+                console.error("Erro na fila:", err);
+                if (!interaction.replied && !interaction.deferred) {
+                    return await interaction.reply({ content: "❌ Erro ao processar a fila!", flags: MessageFlags.Ephemeral });
+                }
+            }
+            return;
         }
 
-        // --- BOTÃO: MEU PERFIL ---
+        // --- BOTÕES DO RANKING ---
         if (customId === "btn_meu_perfil") {
             const perfil = ranking.pegarPerfil(user.id);
             const total = perfil.vitorias + perfil.derrotas;
@@ -108,25 +111,19 @@ module.exports = async (interaction) => {
                     { name: "🏆 Vitórias", value: `${perfil.vitorias}`, inline: true },
                     { name: "❌ Derrotas", value: `${perfil.derrotas}`, inline: true },
                     { name: "📊 Winrate", value: `${wr}%`, inline: true },
-                    { name: "🔥 Sequência Atual", value: `${perfil.winstreak}`, inline: true },
-                    { name: "⚡ Maior Sequência", value: `${perfil.maxWinstreak}`, inline: true }
+                    { name: "🔥 Winstreak", value: `${perfil.winstreak}`, inline: true },
+                    { name: "⚡ Maior Winstreak", value: `${perfil.maxWinstreak}`, inline: true }
                 )
                 .setFooter({ text: "ORG PHANTOM | Sistema de Ranking" });
 
             return await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
         }
 
-        // --- BOTÃO: VER RANKING ---
         if (customId === "btn_ver_ranking") {
             const top20 = ranking.pegarTop20();
-            if (top20.length === 0) {
-                return await interaction.reply({ content: "⚠️ Ninguém pontuou no ranking ainda!", flags: MessageFlags.Ephemeral });
-            }
+            if (top20.length === 0) return await interaction.reply({ content: "⚠️ Ninguém pontuou ainda!", flags: MessageFlags.Ephemeral });
 
-            const lista = top20.map((j, i) => {
-                const pos = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `**#${i + 1}**`;
-                return `${pos} <@${j.id}> — **${j.vitorias}** Vitórias (🔥 ${j.winstreak} seq.)`;
-            }).join("\n");
+            const lista = top20.map((j, i) => `${i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `**#${i + 1}**`} <@${j.id}> — **${j.vitorias}** V (🔥 ${j.winstreak})`).join("\n");
 
             const embed = new EmbedBuilder()
                 .setColor("#FEE75C")
