@@ -52,7 +52,7 @@ module.exports = (config, fila1 = [], fila2 = []) => {
                 .setCustomId("entrar_gel_normal")
                 .setLabel("Gel Normal")
                 .setEmoji(config.emojiGelNormal || "🧊")
-                .setStyle(ButtonStyle.Primary), // 🔵 AZUL (CORRIGIDO AQUI!)
+                .setStyle(ButtonStyle.Primary), // 🔵 AZUL (NOME CORRETO: Primary)
             new ButtonBuilder()
                 .setCustomId("entrar_gel_inf")
                 .setLabel("Gel Infinito")
