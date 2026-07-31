@@ -2,7 +2,7 @@ const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("
 
 module.exports = (config, fila1 = [], fila2 = []) => {
     const qtd = config.quantidade || 2;
-    const titulo = `${config.modo || "Mobile"} | ${config.valor || "5,00"}`;
+    const titulo = `${config.nomePainel || "PHANTOM"} | ${config.valor || "5,00"}`;
     const urlImagem = "https://media.discordapp.net/attachments/1523200272158036008/1531973873116123276/Design_sem_nome.png";
 
     const formatarFila = (fila) => {
@@ -14,8 +14,47 @@ module.exports = (config, fila1 = [], fila2 = []) => {
         .setColor("#2b2d31")
         .setTitle(titulo)
         .setThumbnail(urlImagem)
-        .setFooter({ text: "ORG PHANTOM | Sistema de Partidas" })
-        .addFields(
+        .setFooter({ text: "ORG PHANTOM | Sistema de Partidas" });
+
+    const row = new ActionRowBuilder();
+
+    // --- LÓGICA DO MODO MISTO ---
+    if (config.modoMisto === true) {
+        // Se estiver MISTO
+        embed.addFields(
+            {
+                name: `📱 1 Emulador (${fila1.length}/${qtd})`,
+                value: formatarFila(fila1),
+                inline: false
+            },
+            {
+                name: `💻 2 Emuladores (${fila2.length}/${qtd})`,
+                value: formatarFila(fila2),
+                inline: false
+            }
+        );
+
+        row.addComponents(
+            new ButtonBuilder()
+                .setCustomId("entrar_1emulador")
+                .setLabel("1 Emulador")
+                .setEmoji(config.emojiEmul1 || "📱")
+                .setStyle(ButtonStyle.Primary),
+            new ButtonBuilder()
+                .setCustomId("entrar_2emuladores")
+                .setLabel("2 Emuladores")
+                .setEmoji(config.emojiEmul2 || "💻")
+                .setStyle(ButtonStyle.Primary),
+            new ButtonBuilder()
+                .setCustomId("sair_fila")
+                .setLabel("Sair")
+                .setEmoji(config.emojiSair || "🚪")
+                .setStyle(ButtonStyle.Danger)
+        );
+
+    } else {
+        // Se estiver MODO GEL (Normal)
+        embed.addFields(
             {
                 name: `Gel Normal (${fila1.length}/${qtd})`,
                 value: formatarFila(fila1),
@@ -28,8 +67,7 @@ module.exports = (config, fila1 = [], fila2 = []) => {
             }
         );
 
-    const row = new ActionRowBuilder()
-        .addComponents(
+        row.addComponents(
             new ButtonBuilder()
                 .setCustomId("entrar_gel_normal")
                 .setLabel("Gel Normal")
@@ -46,6 +84,7 @@ module.exports = (config, fila1 = [], fila2 = []) => {
                 .setEmoji(config.emojiSair || "🚪")
                 .setStyle(ButtonStyle.Danger)
         );
+    }
 
     return { embeds: [embed], components: [row] };
 };
