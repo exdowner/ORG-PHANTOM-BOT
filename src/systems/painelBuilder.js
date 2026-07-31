@@ -4,17 +4,17 @@ module.exports = function (config, lista1 = [], lista2 = []) {
     const qtdMax = config.quantidade || 2;
 
     const embed = new EmbedBuilder()
-        .setColor("#5865F2")
+        .setColor("#2b2d31")
         .setTitle(`${config.modo || "Mobile"} | ${config.valor || "R$ 5,00"}`)
-        .setDescription("Selecione uma das opções abaixo para entrar na fila:")
+        .setThumbnail("https://cdn.discordapp.com/avatars/1336141381223940146/00b21a8d052db58210775d78a9c3d258.png") // Ícone padrão do bot
         .addFields(
             { 
-                name: config.modoMisto ? `📱 1 Emulador (${lista1.length}/${qtdMax})` : `🧊 Gel Normal (${lista1.length}/${qtdMax})`, 
+                name: config.modoMisto ? `1 Emulador (${lista1.length}/${qtdMax})` : `Gel Normal (${lista1.length}/${qtdMax})`, 
                 value: lista1.length > 0 ? lista1.map(j => `<@${j.id}>`).join("\n") : "Vazio", 
                 inline: false 
             },
             { 
-                name: config.modoMisto ? `💻 2 Emuladores (${lista2.length}/${qtdMax})` : `♾️ Gel Infinito (${lista2.length}/${qtdMax})`, 
+                name: config.modoMisto ? `2 Emuladores (${lista2.length}/${qtdMax})` : `Gel Infinito (${lista2.length}/${qtdMax})`, 
                 value: lista2.length > 0 ? lista2.map(j => `<@${j.id}>`).join("\n") : "Vazio", 
                 inline: false 
             }
@@ -25,8 +25,8 @@ module.exports = function (config, lista1 = [], lista2 = []) {
 
     if (config.modoMisto) {
         row.addComponents(
-            new ButtonBuilder().setCustomId("entrar_1emulador").setLabel("1 Emulador").setEmoji(config.emojiEmul1 || "📱").setStyle(ButtonStyle.Primary),
-            newButtonBuilder().setCustomId("entrar_2emuladores").setLabel("2 Emuladores").setEmoji(config.emojiEmul2 || "💻").setStyle(ButtonStyle.Primary)
+            new ButtonBuilder().setCustomId("entrar_1emulador").setLabel("1 Emulador").setEmoji(config.emojiEmul1 || "📱").setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId("entrar_2emuladores").setLabel("2 Emuladores").setEmoji(config.emojiEmul2 || "💻").setStyle(ButtonStyle.Success)
         );
     } else {
         row.addComponents(
