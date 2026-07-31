@@ -35,7 +35,6 @@ module.exports = async (interaction) => {
             return;
         }
 
-        // --- MODAIS (Editar Nome, Valor, Modo, Qtd) ---
         if (interaction.isModalSubmit()) {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
             const config = pegarConfig();
@@ -53,7 +52,6 @@ module.exports = async (interaction) => {
 
             salvarConfig(config);
 
-            // Atualiza o preview do /setup
             const msgOriginal = interaction.message;
             if (msgOriginal && msgOriginal.embeds.length > 0) {
                 const novoPreview = painelBuilder(config, [], []);
@@ -63,7 +61,6 @@ module.exports = async (interaction) => {
             return await interaction.editReply({ content: "✅ Configuração alterada!" });
         }
 
-        // --- MENUS DE EMOJIS ---
         if (interaction.isStringSelectMenu()) {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
             const config = pegarConfig();
@@ -79,11 +76,9 @@ module.exports = async (interaction) => {
             return await interaction.editReply({ content: `✅ Emoji atualizado!` });
         }
 
-        // --- BOTÕES ---
         if (interaction.isButton()) {
             const { customId, user, guild, channel, message } = interaction;
 
-            // --- BOTÕES DE EDIÇÃO DO /SETUP ---
             if (customId === "editar_nome_painel") {
                 const modal = new ModalBuilder().setCustomId("modal_editar_nome_painel").setTitle("Editar Nome");
                 const input = new TextInputBuilder().setCustomId("input_nome_painel").setLabel("Nome do Painel").setStyle(TextInputStyle.Short).setRequired(true);
@@ -154,9 +149,8 @@ module.exports = async (interaction) => {
 
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
 
-            // --- BOTÕES DE FILA (ENTRAR/SAIR) ---
             if (customId.startsWith("entrar_") || customId === "sair_fila") {
-                const painelId = message.id; // ID da mensagem do painel
+                const painelId = message.id;
                 let tipoFila = customId.replace("entrar_", "");
                 
                 const isEmulador = tipoFila.includes("emulador") || tipoFila.includes("emuladores");
@@ -179,10 +173,8 @@ module.exports = async (interaction) => {
                 const lista1 = filas.jogadores(isEmulador ? "1emulador" : "normal", painelId);
                 const lista2 = filas.jogadores(isEmulador ? "2emuladores" : "infinito", painelId);
                 
-                // Pega a configuração real salva no banco
                 const configReal = pegarConfig();
 
-                // Passa os valores REAIS (sem cair no padrão)
                 const configMock = {
                     modoMisto: isEmulador,
                     modo: configReal.modo || "Mobile",
@@ -205,7 +197,6 @@ module.exports = async (interaction) => {
                     console.error("Erro ao atualizar painel público:", err);
                 }
 
-                // --- Lógica de fim de fila (Envia para o canal de logs) ---
                 const qtd = configMock.quantidade || 2;
                 const filaAtual = lista1.length >= qtd ? lista1 : (lista2.length >= qtd ? lista2 : null);
 
@@ -243,8 +234,9 @@ module.exports = async (interaction) => {
                 return await interaction.editReply({ content: `✅ <@${user.id}>, entrou na fila!` });
             }
 
-            // --- BOTÕES DE ACEITAR/CANCELAR PARTIDA ---
+            // --- BOTÕES DE ACEITAR/CANCELAR (COM CORREÇÃO DE TRAVAMENTO) ---
             if (customId === "aceitar_partida") {
+                // Já deferiu reply lá em cima, mas vamos garantir que a resposta chegue
                 await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
                 const guild = interaction.guild;
 
@@ -252,11 +244,7 @@ module.exports = async (interaction) => {
                     const nomeCanal = `partida-${Date.now()}`;
                     const novoCanal = await guild.channels.create({
                         name: nomeCanal,
-                        type: ChannelType.GuildText,
-                        permissionOverwrites: [
-                            { id: guild.id, deny: [PermissionFlagsBits.ViewChannel] },
-                            { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] }
-                        ]
+                        type: ChannelType.GuildText
                     });
 
                     console.log(`✅ CANAL DE TEXTO CRIADO: #${novoCanal.name}`);
@@ -273,7 +261,6 @@ module.exports = async (interaction) => {
                 await interaction.editReply({ content: `❌ Partida cancelada pelo jogador.` });
             }
 
-            // --- PERFIL E RANKING ---
             if (customId === "btn_meu_perfil") {
                 const perfil = ranking.pegarPerfil(user.id);
                 const total = perfil.vitorias + perfil.derrotas;
