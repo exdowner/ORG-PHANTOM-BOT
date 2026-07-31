@@ -13,11 +13,13 @@ const {
 const ranking = require("../systems/ranking.js");
 const filas = require("../systems/filas.js");
 const painelBuilder = require("../systems/painelBuilder.js");
-const { pegarConfig, salvarConfig } = require("../systems/config.js");
+const configSystem = require("../systems/config.js");
 
 module.exports = async (interaction) => {
     try {
-        // 1. COMANDOS SLASH
+        const pegarConfig = configSystem.pegarConfig || (() => ({}));
+        const salvarConfig = configSystem.salvarConfig || (() => {});
+
         if (interaction.isChatInputCommand()) {
             const command = interaction.client.commands.get(interaction.commandName);
             if (!command) return;
@@ -33,7 +35,6 @@ module.exports = async (interaction) => {
             return;
         }
 
-        // 2. SUBMISSÃO DE MODAIS
         if (interaction.isModalSubmit()) {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
             const config = pegarConfig();
@@ -58,7 +59,6 @@ module.exports = async (interaction) => {
             });
         }
 
-        // 3. INTERAÇÃO DE BOTÕES
         if (interaction.isButton()) {
             const { customId, user, guild, channel, message } = interaction;
 
@@ -137,7 +137,6 @@ module.exports = async (interaction) => {
                 return await interaction.editReply({ content: "✅ Configurações salvas e aplicadas com sucesso!" });
             }
 
-            // --- TICKET DE SUPORTE ---
             if (customId === "abrir_ticket") {
                 const canalExistente = guild.channels.cache.find(c => c.name === `ticket-${user.username.toLowerCase()}`);
                 if (canalExistente) {
@@ -188,7 +187,6 @@ module.exports = async (interaction) => {
                 return;
             }
 
-            // --- SISTEMA DE FILAS ---
             if (customId.startsWith("entrar_") || customId === "sair_fila") {
                 const painelId = message.id;
 
@@ -235,7 +233,6 @@ module.exports = async (interaction) => {
                 });
             }
 
-            // --- BOTÕES DO RANKING ---
             if (customId === "btn_meu_perfil") {
                 const perfil = ranking.pegarPerfil(user.id);
                 const total = perfil.vitorias + perfil.derrotas;
