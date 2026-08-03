@@ -149,12 +149,40 @@ module.exports = async (interaction) => {
 
             if (customId.startsWith("entrar_") || customId === "sair_fila") {
                 const painelId = message.id;
-                let tipoFila = customId.replace("entrar_", "");
+
+                // Trava painéis antigos na primeira interação
+                if (!filas.getConfig(painelId)) {
+                    const btn = message.components?.[0]?.components?.[0];
+                    const label = btn?.label || "";
+                    const style = btn?.style;
+
+                    let modoDetectado = "Mobile";
+                    let mistoDetectado = false;
+
+                    if (label.includes("Gel")) {
+                        modoDetectado = "Mobile";
+                        mistoDetectado = false;
+                    } else if (style === 3) {
+                        modoDetectado = "Emulador";
+                        mistoDetectado = true;
+                    } else {
+                        modoDetectado = "Emulador";
+                        mistoDetectado = false;
+                    }
+
+                    const configAtual = pegarConfig();
+                    filas.setConfig(painelId, {
+                        ...configAtual,
+                        modo: modoDetectado,
+                        modoMisto: mistoDetectado
+                    });
+                }
 
                 const configReal = filas.getConfig(painelId) || pegarConfig();
                 const isMisto = configReal.modoMisto === true;
                 const isEmulador = isMisto || (configReal.modo && configReal.modo.toLowerCase() === "emulador");
 
+                let tipoFila = customId.replace("entrar_", "");
                 let nomeFila = tipoFila;
                 if (tipoFila === "gel_normal") nomeFila = "normal";
                 else if (tipoFila === "gel_inf") nomeFila = "infinito";
