@@ -18,19 +18,18 @@ module.exports = (config, fila1 = [], fila2 = []) => {
 
     const row = new ActionRowBuilder();
 
-    // MODO MISTO
+    // MODO MISTO (EMULADOR)
     if (config.modoMisto === true) {
         embed.addFields(
             { name: `1 Emulador (${fila1.length}/${qtd})`, value: formatarFila(fila1), inline: false },
             { name: `2 Emuladores (${fila2.length}/${qtd})`, value: formatarFila(fila2), inline: false }
         );
 
-        // 🔥 CRIA O BOTÃO SEM EMOJI PRIMEIRO
         const btn1 = new ButtonBuilder()
             .setCustomId("entrar_1emulador")
             .setLabel("1 Emulador")
             .setStyle(ButtonStyle.Success);
-        if (config.emojiEmul1) btn1.setEmoji(config.emojiEmul1); // Só coloca se existir
+        if (config.emojiEmul1) btn1.setEmoji(config.emojiEmul1);
 
         const btn2 = new ButtonBuilder()
             .setCustomId("entrar_2emuladores")
@@ -47,7 +46,7 @@ module.exports = (config, fila1 = [], fila2 = []) => {
         row.addComponents(btn1, btn2, btnSair);
 
     } else {
-        // MODO GEL
+        // MODO GEL (MOBILE)
         embed.addFields(
             { name: `Gel Normal (${fila1.length}/${qtd})`, value: formatarFila(fila1), inline: false },
             { name: `Gel Infinito (${fila2.length}/${qtd})`, value: formatarFila(fila2), inline: false }
@@ -56,13 +55,14 @@ module.exports = (config, fila1 = [], fila2 = []) => {
         const btnGelNormal = new ButtonBuilder()
             .setCustomId("entrar_gel_normal")
             .setLabel("Gel Normal")
-            .setStyle(ButtonStyle.Primary);
+            .setStyle(ButtonStyle.Primary); // 🔵 AZUL
         if (config.emojiGelNormal) btnGelNormal.setEmoji(config.emojiGelNormal);
 
+        // 🔥 CORREÇÃO AQUI: Agora os dois botões de gel são AZUIS (Primary)
         const btnGelInf = new ButtonBuilder()
             .setCustomId("entrar_gel_inf")
             .setLabel("Gel Infinito")
-            .setStyle(ButtonStyle.Success);
+            .setStyle(ButtonStyle.Primary); // 🔵 AZUL (CORRIGIDO!)
         if (config.emojiGelInfinito) btnGelInf.setEmoji(config.emojiGelInfinito);
         
         const btnSair = new ButtonBuilder()
