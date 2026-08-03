@@ -36,7 +36,7 @@ module.exports = async (interaction) => {
             return;
         }
 
-        // ----------- MODAIS (Apenas Nome e Modo agora) -----------
+        // ----------- MODAIS (Nome e Modo apenas) -----------
         if (interaction.isModalSubmit()) {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
             const config = pegarConfig();
@@ -98,7 +98,7 @@ module.exports = async (interaction) => {
                 if (interaction.customId === "select_valor") {
                     embed.spliceFields(2, 1, { name: "**💰 Valor:**", value: `\`${config.valor || "20,00"}\``, inline: true });
                 } else if (interaction.customId === "select_quantidade") {
-                    embed.spliceFields(3, 1, { name: "**👥 Quantidade:**", value: `\`${config.quantidade} jogadores\``, inline: true });
+                    embed.spliceFields(3, 1, { name: "**👥 Multiplicador:**", value: `\`${config.quantidade}x${config.quantidade}\``, inline: true });
                 }
                 await msgOriginal.edit({ embeds: [embed] }).catch(() => {});
             }
@@ -168,6 +168,21 @@ module.exports = async (interaction) => {
                 return await interaction.editReply({ content: "✅ Salvo!" });
             }
 
+            // 🔥 BOTÃO "ENVIAR PAINEL" (Simula o /setupenvia)
+            if (customId === "enviar_painel_agora") {
+                const config = pegarConfig();
+                if (!config.quantidade) config.quantidade = 1;
+
+                const painel = painelBuilder(config, [], []);
+                const msg = await interaction.channel.send({
+                    embeds: painel.embeds,
+                    components: painel.components
+                });
+
+                filas.setConfig(msg.id, config);
+                return await interaction.editReply({ content: "✅ Painel enviado com sucesso!" });
+            }
+
             // =========== BOTÕES DE RANKING E PERFIL ===========
             if (customId === "btn_meu_perfil") {
                 const perfil = ranking.pegarPerfil(user.id);
@@ -194,7 +209,6 @@ module.exports = async (interaction) => {
 
             // =========== CRIAÇÃO E FECHAMENTO DE TICKETS ===========
             if (customId === "abrir_ticket") {
-                // Verifica se o usuário já possui um ticket aberto
                 const ticketsExistentes = guild.channels.cache.filter(c => 
                     c.type === ChannelType.GuildText && 
                     c.name.startsWith(`ticket-${user.username}`)
@@ -208,24 +222,15 @@ module.exports = async (interaction) => {
 
                 try {
                     const nomeTicket = `ticket-${user.username}`;
-                    
-                    // Cria o canal de texto privado
                     const ticketChannel = await guild.channels.create({
                         name: nomeTicket,
                         type: ChannelType.GuildText,
                         permissionOverwrites: [
-                            {
-                                id: guild.id,
-                                deny: [PermissionFlagsBits.ViewChannel], // Esconde de todo mundo
-                            },
-                            {
-                                id: user.id,
-                                allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory], // Só o usuário vê
-                            }
+                            { id: guild.id, deny: [PermissionFlagsBits.ViewChannel] },
+                            { id: user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] }
                         ]
                     });
 
-                    // Botão para fechar o ticket
                     const fecharRow = new ActionRowBuilder()
                         .addComponents(
                             new ButtonBuilder()
@@ -234,7 +239,6 @@ module.exports = async (interaction) => {
                                 .setStyle(ButtonStyle.Danger)
                         );
 
-                    // Envia uma mensagem de boas-vindas dentro do ticket com o botão
                     await ticketChannel.send({
                         content: `👋 Olá <@${user.id}>, bem-vindo ao seu ticket de suporte!\n\nDescreva o seu problema abaixo que nossa equipe irá te ajudar o mais rápido possível.\n\nClique no botão abaixo para fechar este ticket quando quiser.`,
                         components: [fecharRow]
@@ -252,14 +256,11 @@ module.exports = async (interaction) => {
                 }
             }
 
-            // Botão para FECHAR o ticket
             if (customId === "fechar_ticket") {
                 const canal = interaction.channel;
-                
                 if (!canal.name.startsWith("ticket-")) {
                     return await interaction.editReply({ content: "❌ Este comando só pode ser usado em um ticket." });
                 }
-
                 try {
                     await canal.delete();
                     await interaction.editReply({ content: "✅ Ticket fechado com sucesso!" });
@@ -273,7 +274,7 @@ module.exports = async (interaction) => {
             if (customId.startsWith("entrar_") || customId === "sair_fila") {
                 const painelId = message.id;
 
-                // 🔥 CORREÇÃO MILIONÁRIA: Pega a config CONGELADA do filas.js!
+                // 🔥 Pega a configuração CONGELADA do filas.js
                 const configReal = filas.getConfig(painelId);
                 if (!configReal) {
                     return await interaction.editReply({ content: "❌ Este painel está corrompido. Use /setupenvia para gerar um novo." });
@@ -307,7 +308,7 @@ module.exports = async (interaction) => {
                     emojiEmul1: configReal.emojiEmul1,
                     emojiEmul2: configReal.emojiEmul2,
                     emojiSair: configReal.emojiSair,
-                    quantidade: configReal.quantidade || 2
+                    quantidade: configReal.quantidade || 1
                 };
 
                 try {

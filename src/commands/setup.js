@@ -11,7 +11,8 @@ module.exports = {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
         const config = pegarConfig();
 
-        if (!config.quantidade) config.quantidade = 2;
+        // Se não tiver quantidade definida, assume 1x1 (multiplicador 1)
+        if (!config.quantidade) config.quantidade = 1;
 
         const embed = new EmbedBuilder()
             .setColor("#2b2d31")
@@ -21,7 +22,7 @@ module.exports = {
                 { name: "**📛 Nome do Painel:**", value: `\`${config.nomePainel || "PHANTOM"}\``, inline: false },
                 { name: "**🎮 Modo:**", value: `\`${config.modo || "Mobile"}\``, inline: true },
                 { name: "**💰 Valor:**", value: `\`${config.valor || "20,00"}\``, inline: true },
-                { name: "**👥 Quantidade:**", value: `\`${config.quantidade} jogadores\``, inline: true },
+                { name: "**👥 Multiplicador:**", value: `\`${config.quantidade}x${config.quantidade}\``, inline: true },
                 { name: "**🔀 Misto:**", value: config.modoMisto ? "Ativado" : "Desativado", inline: false }
             )
             .setFooter({ text: "Só você pode ver esta mensagem • Ignorar mensagem" });
@@ -52,16 +53,16 @@ module.exports = {
                 )
         );
 
-        // LINHA 3: Seletor de Quantidade
+        // LINHA 3: Seletor de Multiplicador (1x1, 2x2, 3x3, 4x4)
         const row3 = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("select_quantidade")
                 .setPlaceholder("Selecione o Tamanho da Fila")
                 .addOptions(
-                    new StringSelectMenuOptionBuilder().setLabel("1x1").setValue("1"),
-                    new StringSelectMenuOptionBuilder().setLabel("2x2").setValue("2"),
-                    new StringSelectMenuOptionBuilder().setLabel("3x3").setValue("3"),
-                    new StringSelectMenuOptionBuilder().setLabel("4x4").setValue("4")
+                    new StringSelectMenuOptionBuilder().setLabel("1x1 (2 jogadores)").setValue("1"),
+                    new StringSelectMenuOptionBuilder().setLabel("2x2 (4 jogadores)").setValue("2"),
+                    new StringSelectMenuOptionBuilder().setLabel("3x3 (6 jogadores)").setValue("3"),
+                    new StringSelectMenuOptionBuilder().setLabel("4x4 (8 jogadores)").setValue("4")
                 )
         );
 
@@ -71,11 +72,12 @@ module.exports = {
             new ButtonBuilder().setCustomId("escolher_emoji_gel_inf").setLabel("♾️ Gel Inf").setStyle(ButtonStyle.Success)
         );
 
-        // LINHA 5: Botões de Emojis (Emuladores e Sair)
+        // LINHA 5: Botões de Emojis (Emuladores e Sair) + Botão "Enviar Painel"
         const row5 = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId("escolher_emoji_emul1").setLabel("📱 Emul 1").setStyle(ButtonStyle.Success),
             new ButtonBuilder().setCustomId("escolher_emoji_emul2").setLabel("💻 Emul 2").setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId("escolher_emoji_sair").setLabel("🚪 Sair").setStyle(ButtonStyle.Danger)
+            new ButtonBuilder().setCustomId("escolher_emoji_sair").setLabel("🚪 Sair").setStyle(ButtonStyle.Danger),
+            new ButtonBuilder().setCustomId("enviar_painel_agora").setLabel("🚀 Enviar Painel").setStyle(ButtonStyle.Primary)
         );
 
         return await interaction.editReply({ 
