@@ -8,9 +8,7 @@ const {
     TextInputBuilder,
     TextInputStyle,
     StringSelectMenuBuilder,
-    StringSelectMenuOptionBuilder,
-    ChannelType,
-    PermissionFlagsBits
+    StringSelectMenuOptionBuilder
 } = require("discord.js");
 const ranking = require("../systems/ranking.js");
 const filas = require("../systems/filas.js");
@@ -35,7 +33,6 @@ module.exports = async (interaction) => {
             return;
         }
 
-        // 1. MODAIS
         if (interaction.isModalSubmit()) {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
             const config = pegarConfig();
@@ -45,7 +42,7 @@ module.exports = async (interaction) => {
                 config.valor = interaction.fields.getTextInputValue("input_valor");
             } else if (interaction.customId === "modal_editar_modo") {
                 config.modo = interaction.fields.getTextInputValue("input_modo");
-                config.modoMisto = false; // força sair do Misto
+                config.modoMisto = false;
             } else if (interaction.customId === "modal_editar_quantidade") {
                 const qtd = parseInt(interaction.fields.getTextInputValue("input_quantidade"));
                 if (!isNaN(qtd) && qtd > 0) config.quantidade = qtd;
@@ -69,7 +66,6 @@ module.exports = async (interaction) => {
             return await interaction.editReply({ content: "✅ Configuração alterada!" });
         }
 
-        // 2. MENU DE EMOJIS
         if (interaction.isStringSelectMenu()) {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
             const config = pegarConfig();
@@ -83,11 +79,9 @@ module.exports = async (interaction) => {
             return await interaction.editReply({ content: `✅ Emoji atualizado com sucesso!` });
         }
 
-        // 3. BOTÕES
         if (interaction.isButton()) {
-            const { customId, user, guild, channel, message } = interaction;
+            const { customId, user, guild, message } = interaction;
 
-            // BOTÕES QUE ABREM MODAIS
             if (customId === "editar_nome_painel") {
                 const modal = new ModalBuilder().setCustomId("modal_editar_nome_painel").setTitle("Editar Nome");
                 const input = new TextInputBuilder().setCustomId("input_nome_painel").setLabel("Nome do Painel").setStyle(TextInputStyle.Short).setRequired(true);
@@ -113,7 +107,6 @@ module.exports = async (interaction) => {
                 return await interaction.showModal(modal);
             }
 
-            // BOTÕES DE EMOJI
             if (customId.startsWith("escolher_emoji_")) {
                 const tipo = customId.replace("escolher_emoji_", "");
                 const emojisDoServidor = guild.emojis.cache.first(25);
@@ -135,7 +128,6 @@ module.exports = async (interaction) => {
                 return await interaction.reply({ content: "Escolha o emoji abaixo:", components: [row], flags: MessageFlags.Ephemeral });
             }
 
-            // BOTÕES DE AÇÃO
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
 
             if (customId === "ativar_misto") {
@@ -155,21 +147,17 @@ module.exports = async (interaction) => {
                 return await interaction.editReply({ content: "✅ Salvo!" });
             }
 
-            // --- Lógica das Filas (Entrar/Sair) ---
             if (customId.startsWith("entrar_") || customId === "sair_fila") {
                 const painelId = message.id;
                 let tipoFila = customId.replace("entrar_", "");
-                const configReal = pegarConfig();
+
+                const configReal = filas.getConfig(painelId) || pegarConfig();
                 const isMisto = configReal.modoMisto === true;
                 const isEmulador = isMisto || (configReal.modo && configReal.modo.toLowerCase() === "emulador");
 
                 let nomeFila = tipoFila;
                 if (tipoFila === "gel_normal") nomeFila = "normal";
                 else if (tipoFila === "gel_inf") nomeFila = "infinito";
-
-                if (typeof filas.sairFila !== 'function' || typeof filas.entrarFila !== 'function') {
-                    return await interaction.editReply({ content: "❌ Erro: Arquivo de filas não configurado corretamente." });
-                }
 
                 if (customId === "sair_fila") {
                     filas.sairFila(painelId, user);
@@ -185,7 +173,7 @@ module.exports = async (interaction) => {
                     modoMisto: configReal.modoMisto,
                     modo: configReal.modo || "Mobile",
                     valor: configReal.valor || "20,00",
-                    nomePainel: configReal.nomePainel || "PHANTOM",
+                    nomePainel: configReal.nomePainel || configReal.nome || "PHANTOM",
                     emojiGelNormal: configReal.emojiGelNormal,
                     emojiGelInfinito: configReal.emojiGelInfinito,
                     emojiEmul1: configReal.emojiEmul1,
