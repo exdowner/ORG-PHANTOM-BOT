@@ -7,7 +7,6 @@ const {
     ModalBuilder, 
     TextInputBuilder, 
     TextInputStyle,
-    StringSelectMenuBuilder,
     ChannelType,
     PermissionFlagsBits
 } = require("discord.js");
@@ -35,7 +34,6 @@ module.exports = async (interaction) => {
             return;
         }
 
-        // --- MODAIS ---
         if (interaction.isModalSubmit()) {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
             const config = pegarConfig();
@@ -62,25 +60,8 @@ module.exports = async (interaction) => {
             return await interaction.editReply({ content: "✅ Configuração alterada!" });
         }
 
-        // --- MENUS DE EMOJIS ---
-        if (interaction.isStringSelectMenu()) {
-            await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
-            const config = pegarConfig();
-            const valorEscolhido = interaction.values[0];
-
-            if (interaction.customId === "select_emoji_gel_normal") config.emojiGelNormal = valorEscolhido;
-            if (interaction.customId === "select_emoji_gel_inf") config.emojiGelInfinito = valorEscolhido;
-            if (interaction.customId === "select_emoji_emul1") config.emojiEmul1 = valorEscolhido;
-            if (interaction.customId === "select_emoji_emul2") config.emojiEmul2 = valorEscolhido;
-            if (interaction.customId === "select_emoji_sair") config.emojiSair = valorEscolhido;
-
-            salvarConfig(config);
-            return await interaction.editReply({ content: `✅ Emoji atualizado!` });
-        }
-
-        // --- BOTÕES ---
         if (interaction.isButton()) {
-            // 🔥 LINHA MÁGICA: Sem isso o erro 404/InteractionNotReplied aparece
+            // 🔥 LINHA MÁGICA AQUI! Isso impede o bot de travar!
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
 
             const { customId, user, guild, channel, message } = interaction;
@@ -130,29 +111,7 @@ module.exports = async (interaction) => {
                 return await interaction.editReply({ content: "✅ Salvo!" });
             }
 
-            if (customId.startsWith("escolher_emoji_")) {
-                const tipo = customId.replace("escolher_emoji_", "");
-                const emojisDoServidor = guild.emojis.cache.first(25);
-
-                if (!emojisDoServidor.length) {
-                    return await interaction.editReply({ content: "⚠️ Este servidor não possui emojis personalizados!" });
-                }
-
-                const selectMenu = new StringSelectMenuBuilder()
-                    .setCustomId(`select_emoji_${tipo}`)
-                    .setPlaceholder("Selecione um emoji do servidor")
-                    .addOptions(
-                        emojisDoServidor.map(e => ({
-                            label: e.name,
-                            value: `<:${e.name}:${e.id}>`,
-                            emoji: e.id
-                        }))
-                    );
-
-                const row = new ActionRowBuilder().addComponents(selectMenu);
-                return await interaction.editReply({ content: "Escolha o emoji abaixo:", components: [row] });
-            }
-
+            // --- Lógica das Filas (Entrar/Sair) ---
             if (customId.startsWith("entrar_") || customId === "sair_fila") {
                 const painelId = message.id;
                 let tipoFila = customId.replace("entrar_", "");
@@ -201,106 +160,10 @@ module.exports = async (interaction) => {
                     console.error("Erro ao atualizar painel público:", err);
                 }
 
-                const qtd = configMock.quantidade || 2;
-                const filaAtual = lista1.length >= qtd ? lista1 : (lista2.length >= qtd ? lista2 : null);
-
-                if (filaAtual && filaAtual.length >= qtd) {
-                    console.log("🎯🎯🎯 FILA COMPLETA!");
-                    const ID_CANAL_LOGS = "1532001733750952135"; 
-                    const canalLogs = guild.channels.cache.get(ID_CANAL_LOGS);
-
-                    if (canalLogs) {
-                        try {
-                            const rowBotoes = new ActionRowBuilder()
-                                .addComponents(
-                                    new ButtonBuilder().setCustomId("aceitar_partida").setLabel("✅ Aceitar").setStyle(ButtonStyle.Success),
-                                    new ButtonBuilder().setCustomId("cancelar_partida").setLabel("❌ Cancelar").setStyle(ButtonStyle.Danger)
-                                );
-
-                            await canalLogs.send({
-                                content: `🟢 **NOVA PARTIDA FORMADA!**\n👥 Jogadores: ${filaAtual.map(j => `<@${j.id}>`).join(" e ")}\n📊 Fila: ${isEmulador ? "Mista" : "Gel"} (${qtd}vs${qtd})\n\nClique em **Aceitar** para criar o canal de texto.`,
-                                components: [rowBotoes]
-                            });
-                            console.log("✅ Mensagem enviada para a aba de logs!");
-                        } catch (err) {
-                            console.error("❌ Erro ao enviar para a aba de logs:", err);
-                            await interaction.channel.send({ content: `❌ Erro ao enviar notificação.` });
-                        }
-                    } else {
-                        console.error(`❌ CANAL DE LOGS NÃO ENCONTRADO! ID: ${ID_CANAL_LOGS}`);
-                        await interaction.channel.send({ content: `❌ Canal de logs não encontrado!` });
-                    }
-                }
-
                 if (customId === "sair_fila") {
                     return await interaction.editReply({ content: `🚪 <@${user.id}>, saiu da fila!` });
                 }
                 return await interaction.editReply({ content: `✅ <@${user.id}>, entrou na fila!` });
-            }
-
-            if (customId === "aceitar_partida") {
-                const guild = interaction.guild;
-
-                try {
-                    const nomeCanal = `partida-${Date.now()}`;
-                    const novoCanal = await guild.channels.create({
-                        name: nomeCanal,
-                        type: ChannelType.GuildText
-                    });
-
-                    console.log(`✅ CANAL DE TEXTO CRIADO: #${novoCanal.name}`);
-                    await interaction.editReply({ content: `✅ **PARTIDA CONFIRMADA!** Canal de texto criado: <#${novoCanal.id}>` });
-                    await novoCanal.send(`👋 Bem-vindos à partida!`);
-
-                    const mensagemPainel = message; 
-                    const painelId = mensagemPainel.id;
-                    filas.sairFila(painelId, user);
-
-                    const configReal = pegarConfig();
-                    const isEmulador = mensagemPainel.embeds[0]?.title?.includes("Emulador") || false;
-                    const lista = filas.jogadores(isEmulador ? "1emulador" : "normal", painelId);
-                    
-                    if (lista && lista.length > 0) {
-                        for (let jogador of lista) {
-                            filas.sairFila(painelId, jogador);
-                        }
-                        console.log(`🧹 FILA LIMPA!`);
-                    }
-
-                    const novoPainel = painelBuilder(configReal, [], []);
-                    await mensagemPainel.edit(novoPainel).catch(() => {});
-
-                } catch (err) {
-                    console.error("❌ ERRO AO CRIAR CANAL DE TEXTO:", err);
-                    await interaction.editReply({ content: `❌ Erro ao criar o canal de texto.` });
-                }
-            }
-
-            if (customId === "cancelar_partida") {
-                await interaction.editReply({ content: `❌ Partida cancelada pelo jogador.` });
-            }
-
-            if (customId === "btn_meu_perfil") {
-                const perfil = ranking.pegarPerfil(user.id);
-                const total = perfil.vitorias + perfil.derrotas;
-                const wr = total > 0 ? ((perfil.vitorias / total) * 100).toFixed(1) : "0.0";
-                const embed = new EmbedBuilder()
-                    .setColor("#5865F2")
-                    .setTitle(`👤 Perfil de ${user.username}`)
-                    .addFields(
-                        { name: "🏆 Vitórias", value: `${perfil.vitorias}`, inline: true },
-                        { name: "❌ Derrotas", value: `${perfil.derrotas}`, inline: true },
-                        { name: "📊 Winrate", value: `${wr}%`, inline: true }
-                    );
-                return await interaction.editReply({ embeds: [embed] });
-            }
-
-            if (customId === "btn_ver_ranking") {
-                const top20 = ranking.pegarTop20();
-                if (top20.length === 0) return await interaction.editReply({ content: "⚠️ Ninguém pontuou ainda!" });
-                const lista = top20.map((j, i) => `**#${i + 1}** <@${j.id}> — **${j.vitorias}** V`).join("\n");
-                const embed = new EmbedBuilder().setColor("#FEE75C").setTitle("🏆 Top 20 Ranking").setDescription(lista);
-                return await interaction.editReply({ embeds: [embed] });
             }
         }
     } catch (err) {
