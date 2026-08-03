@@ -1,4 +1,5 @@
 const config = {
+    nome: "ORG PHANTOM",
     nomePainel: "ORG PHANTOM",
     logo: "https://cdn.discordapp.com/attachments/1523200272158036008/1531973873116123276/Design_sem_nome.png",
     modo: "Mobile",
