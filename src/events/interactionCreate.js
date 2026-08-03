@@ -162,15 +162,15 @@ module.exports = async (interaction) => {
                 const painelId = message.id;
                 let tipoFila = customId.replace("entrar_", "");
                 
-                // 🔥🔥🔥 CORREÇÃO MILIONÁRIA AQUI!
-                // Lemos o BANCO DE DADOS para saber se é Misto, não o título!
+                // 🔥 AQUI NÃO OLHAMOS MAIS O TÍTULO, SÓ O BANCO DE DADOS!
                 const configReal = pegarConfig();
-                const isEmulador = configReal.modoMisto === true; 
+                const isMisto = configReal.modoMisto === true;
 
                 let nomeFila = tipoFila;
                 if (tipoFila === "gel_normal") nomeFila = "normal";
                 else if (tipoFila === "gel_inf") nomeFila = "infinito";
-                
+                // Para Emulador, mantemos o nome original
+
                 if (typeof filas.sairFila !== 'function' || typeof filas.entrarFila !== 'function') {
                     return await interaction.editReply({ content: "❌ Erro: Arquivo de filas não configurado corretamente." });
                 }
@@ -182,12 +182,12 @@ module.exports = async (interaction) => {
                     if (!resultado.ok) return await interaction.editReply({ content: resultado.motivo });
                 }
 
-                const lista1 = filas.jogadores(isEmulador ? "1emulador" : "normal", painelId);
-                const lista2 = filas.jogadores(isEmulador ? "2emuladores" : "infinito", painelId);
+                const lista1 = filas.jogadores(isMisto ? "1emulador" : "normal", painelId);
+                const lista2 = filas.jogadores(isMisto ? "2emuladores" : "infinito", painelId);
                 
-                // Passa a configuração REAL (salva no banco) pro painelBuilder
+                // Passa a configuração REAL (sem modificar nada)
                 const configMock = {
-                    modoMisto: isEmulador, // ✅ Isso é o que manda!
+                    modoMisto: configReal.modoMisto,
                     modo: configReal.modo || "Mobile",
                     valor: configReal.valor || "20,00",
                     nomePainel: configReal.nomePainel || "PHANTOM",

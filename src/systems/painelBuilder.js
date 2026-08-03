@@ -18,10 +18,13 @@ module.exports = (config, fila1 = [], fila2 = []) => {
 
     const row = new ActionRowBuilder();
 
-    // ========================================
-    // MODO MISTO (EMULADOR) -> 🟢 VERDE
-    // ========================================
-    if (config.modoMisto === true) {
+    // Verifica se o Misto está ativado
+    const isMisto = config.modoMisto === true;
+    // Verifica se o modo escolhido é Emulador (quando não for Misto)
+    const isEmulador = config.modo && config.modo.toLowerCase() === "emulador";
+
+    // ==================== MISTO (VERDE) ====================
+    if (isMisto) {
         embed.addFields(
             { name: `1 Emulador (${fila1.length}/${qtd})`, value: formatarFila(fila1), inline: false },
             { name: `2 Emuladores (${fila2.length}/${qtd})`, value: formatarFila(fila2), inline: false }
@@ -46,11 +49,36 @@ module.exports = (config, fila1 = [], fila2 = []) => {
         if (config.emojiSair) btnSair.setEmoji(config.emojiSair);
 
         row.addComponents(btn1, btn2, btnSair);
+    }
+    // ==================== EMULADOR (AZUL) ====================
+    else if (isEmulador) {
+        embed.addFields(
+            { name: `1 Emulador (${fila1.length}/${qtd})`, value: formatarFila(fila1), inline: false },
+            { name: `2 Emuladores (${fila2.length}/${qtd})`, value: formatarFila(fila2), inline: false }
+        );
 
-    } else {
-        // ========================================
-        // MODO GEL (MOBILE) -> 🔵 AZUL
-        // ========================================
+        const btn1 = new ButtonBuilder()
+            .setCustomId("entrar_1emulador")
+            .setLabel("1 Emulador")
+            .setStyle(ButtonStyle.Primary); // 🔵 AZUL
+        if (config.emojiEmul1) btn1.setEmoji(config.emojiEmul1);
+
+        const btn2 = new ButtonBuilder()
+            .setCustomId("entrar_2emuladores")
+            .setLabel("2 Emuladores")
+            .setStyle(ButtonStyle.Primary); // 🔵 AZUL
+        if (config.emojiEmul2) btn2.setEmoji(config.emojiEmul2);
+
+        const btnSair = new ButtonBuilder()
+            .setCustomId("sair_fila")
+            .setLabel("Sair")
+            .setStyle(ButtonStyle.Danger);
+        if (config.emojiSair) btnSair.setEmoji(config.emojiSair);
+
+        row.addComponents(btn1, btn2, btnSair);
+    }
+    // ==================== MOBILE / GEL (AZUL) ====================
+    else {
         embed.addFields(
             { name: `Gel Normal (${fila1.length}/${qtd})`, value: formatarFila(fila1), inline: false },
             { name: `Gel Infinito (${fila2.length}/${qtd})`, value: formatarFila(fila2), inline: false }
