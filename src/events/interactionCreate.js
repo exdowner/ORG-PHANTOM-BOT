@@ -36,6 +36,9 @@ module.exports = async (interaction) => {
             return;
         }
 
+        // =========================================================
+        // 1. MODAIS (Editar Nome, Valor, Modo, Qtd)
+        // =========================================================
         if (interaction.isModalSubmit()) {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
             const config = pegarConfig();
@@ -62,12 +65,33 @@ module.exports = async (interaction) => {
             return await interaction.editReply({ content: "✅ Configuração alterada!" });
         }
 
+        // =========================================================
+        // 2. MENU DE EMOJIS (O QUE FALTAVA!)
+        // =========================================================
+        if (interaction.isStringSelectMenu()) {
+            // Precisa de deferReply para responder a tempo
+            await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
+            
+            const config = pegarConfig();
+            const valorEscolhido = interaction.values[0];
+
+            if (interaction.customId === "select_emoji_gel_normal") config.emojiGelNormal = valorEscolhido;
+            if (interaction.customId === "select_emoji_gel_inf") config.emojiGelInfinito = valorEscolhido;
+            if (interaction.customId === "select_emoji_emul1") config.emojiEmul1 = valorEscolhido;
+            if (interaction.customId === "select_emoji_emul2") config.emojiEmul2 = valorEscolhido;
+            if (interaction.customId === "select_emoji_sair") config.emojiSair = valorEscolhido;
+
+            salvarConfig(config);
+            return await interaction.editReply({ content: `✅ Emoji atualizado com sucesso!` });
+        }
+
+        // =========================================================
+        // 3. BOTÕES
+        // =========================================================
         if (interaction.isButton()) {
             const { customId, user, guild, channel, message } = interaction;
 
-            // =========================================================
-            // 1. BOTÕES QUE ABREM MODAIS (SEM deferReply)
-            // =========================================================
+            // BOTÕES QUE ABREM MODAIS (SEM deferReply)
             if (customId === "editar_nome_painel") {
                 const modal = new ModalBuilder().setCustomId("modal_editar_nome_painel").setTitle("Editar Nome");
                 const input = new TextInputBuilder().setCustomId("input_nome_painel").setLabel("Nome do Painel").setStyle(TextInputStyle.Short).setRequired(true);
@@ -96,9 +120,7 @@ module.exports = async (interaction) => {
                 return await interaction.showModal(modal);
             }
 
-            // =========================================================
-            // 2. BOTÕES DE EMOJI (CORRIGIDO PARA NÃO TRAVAR)
-            // =========================================================
+            // BOTÕES QUE ABREM O MENU DE EMOJIS (SEM deferReply)
             if (customId.startsWith("escolher_emoji_")) {
                 const tipo = customId.replace("escolher_emoji_", "");
                 const emojisDoServidor = guild.emojis.cache.first(25);
@@ -107,7 +129,6 @@ module.exports = async (interaction) => {
                     return await interaction.reply({ content: "⚠️ Este servidor não possui emojis personalizados!", flags: MessageFlags.Ephemeral });
                 }
 
-                // 🔥 CORREÇÃO AQUI: Usando o formato seguro com StringSelectMenuOptionBuilder
                 const selectMenu = new StringSelectMenuBuilder()
                     .setCustomId(`select_emoji_${tipo}`)
                     .setPlaceholder("Selecione um emoji do servidor")
@@ -116,7 +137,7 @@ module.exports = async (interaction) => {
                             new StringSelectMenuOptionBuilder()
                                 .setLabel(e.name)
                                 .setValue(`<:${e.name}:${e.id}>`)
-                                .setEmoji({ id: e.id, name: e.name }) // Formato que o Discord aceita!
+                                .setEmoji({ id: e.id, name: e.name })
                         )
                     );
 
@@ -124,9 +145,7 @@ module.exports = async (interaction) => {
                 return await interaction.reply({ content: "Escolha o emoji abaixo:", components: [row], flags: MessageFlags.Ephemeral });
             }
 
-            // =========================================================
-            // 3. BOTÕES DE AÇÃO (PRECISAM DE deferReply)
-            // =========================================================
+            // BOTÕES DE AÇÃO (PRECISAM DE deferReply)
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
 
             if (customId === "ativar_misto") {
