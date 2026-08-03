@@ -8,7 +8,9 @@ const {
     TextInputBuilder,
     TextInputStyle,
     StringSelectMenuBuilder,
-    StringSelectMenuOptionBuilder
+    StringSelectMenuOptionBuilder,
+    ChannelType,
+    PermissionFlagsBits
 } = require("discord.js");
 const ranking = require("../systems/ranking.js");
 const filas = require("../systems/filas.js");
@@ -19,6 +21,7 @@ const salvarConfig = configModule.salvarConfig || (() => ({}));
 
 module.exports = async (interaction) => {
     try {
+        // ----------- COMANDOS SLASH -----------
         if (interaction.isChatInputCommand()) {
             const command = interaction.client.commands.get(interaction.commandName);
             if (!command) return;
@@ -33,9 +36,11 @@ module.exports = async (interaction) => {
             return;
         }
 
+        // ----------- MODAIS (Editar Nome, Valor, Modo, Quantidade) -----------
         if (interaction.isModalSubmit()) {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
             const config = pegarConfig();
+
             if (interaction.customId === "modal_editar_nome_painel") {
                 config.nomePainel = interaction.fields.getTextInputValue("input_nome_painel");
             } else if (interaction.customId === "modal_editar_valor") {
@@ -47,7 +52,10 @@ module.exports = async (interaction) => {
                 const qtd = parseInt(interaction.fields.getTextInputValue("input_quantidade"));
                 if (!isNaN(qtd) && qtd > 0) config.quantidade = qtd;
             }
+
             salvarConfig(config);
+
+            // Atualiza o preview do /setup ao vivo
             const msgOriginal = interaction.message;
             if (msgOriginal && msgOriginal.embeds.length > 0) {
                 const embed = EmbedBuilder.from(msgOriginal.embeds[0]);
@@ -63,43 +71,52 @@ module.exports = async (interaction) => {
                 }
                 await msgOriginal.edit({ embeds: [embed] }).catch(() => {});
             }
+
             return await interaction.editReply({ content: "✅ Configuração alterada!" });
         }
 
+        // ----------- MENU DE EMOJIS -----------
         if (interaction.isStringSelectMenu()) {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
             const config = pegarConfig();
             const valorEscolhido = interaction.values[0];
+
             if (interaction.customId === "select_emoji_gel_normal") config.emojiGelNormal = valorEscolhido;
             if (interaction.customId === "select_emoji_gel_inf") config.emojiGelInfinito = valorEscolhido;
             if (interaction.customId === "select_emoji_emul1") config.emojiEmul1 = valorEscolhido;
             if (interaction.customId === "select_emoji_emul2") config.emojiEmul2 = valorEscolhido;
             if (interaction.customId === "select_emoji_sair") config.emojiSair = valorEscolhido;
+
             salvarConfig(config);
             return await interaction.editReply({ content: `✅ Emoji atualizado com sucesso!` });
         }
 
+        // ----------- BOTÕES -----------
         if (interaction.isButton()) {
-            const { customId, user, guild, message } = interaction;
+            const { customId, user, guild, message, channel } = interaction;
 
+            // =========== BOTÕES QUE ABREM MODAIS (NÃO TEM deferReply) ===========
             if (customId === "editar_nome_painel") {
                 const modal = new ModalBuilder().setCustomId("modal_editar_nome_painel").setTitle("Editar Nome");
                 const input = new TextInputBuilder().setCustomId("input_nome_painel").setLabel("Nome do Painel").setStyle(TextInputStyle.Short).setRequired(true);
                 modal.addComponents(new ActionRowBuilder().addComponents(input));
                 return await interaction.showModal(modal);
             }
+
             if (customId === "editar_valor") {
                 const modal = new ModalBuilder().setCustomId("modal_editar_valor").setTitle("Editar Valor");
                 const input = new TextInputBuilder().setCustomId("input_valor").setLabel("Novo Valor").setStyle(TextInputStyle.Short).setRequired(true);
                 modal.addComponents(new ActionRowBuilder().addComponents(input));
                 return await interaction.showModal(modal);
             }
+
             if (customId === "editar_modo") {
                 const modal = new ModalBuilder().setCustomId("modal_editar_modo").setTitle("Editar Modo");
                 const input = new TextInputBuilder().setCustomId("input_modo").setLabel("Novo Modo (Mobile ou Emulador)").setStyle(TextInputStyle.Short).setRequired(true);
                 modal.addComponents(new ActionRowBuilder().addComponents(input));
                 return await interaction.showModal(modal);
             }
+
             if (customId === "editar_quantidade") {
                 const modal = new ModalBuilder().setCustomId("modal_editar_quantidade").setTitle("Editar Quantidade");
                 const input = new TextInputBuilder().setCustomId("input_quantidade").setLabel("Nova Quantidade").setStyle(TextInputStyle.Short).setRequired(true);
@@ -107,6 +124,7 @@ module.exports = async (interaction) => {
                 return await interaction.showModal(modal);
             }
 
+            // =========== BOTÕES DE ESCOLHA DE EMOJI (NÃO TEM deferReply) ===========
             if (customId.startsWith("escolher_emoji_")) {
                 const tipo = customId.replace("escolher_emoji_", "");
                 const emojisDoServidor = guild.emojis.cache.first(25);
@@ -128,12 +146,14 @@ module.exports = async (interaction) => {
                 return await interaction.reply({ content: "Escolha o emoji abaixo:", components: [row], flags: MessageFlags.Ephemeral });
             }
 
+            // =========== BOTÕES QUE PRECISAM DE deferReply ===========
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
 
             if (customId === "ativar_misto") {
                 const config = pegarConfig();
                 config.modoMisto = !config.modoMisto;
                 salvarConfig(config);
+
                 const msgOriginal = interaction.message;
                 if (msgOriginal && msgOriginal.embeds.length > 0) {
                     const embed = EmbedBuilder.from(msgOriginal.embeds[0]);
@@ -147,38 +167,46 @@ module.exports = async (interaction) => {
                 return await interaction.editReply({ content: "✅ Salvo!" });
             }
 
+            // =========== BOTÕES DE RANKING, PERFIL E SUPORTE (ADICIONADOS!) ===========
+            if (customId === "btn_meu_perfil") {
+                const perfil = ranking.pegarPerfil(user.id);
+                const total = perfil.vitorias + perfil.derrotas;
+                const wr = total > 0 ? ((perfil.vitorias / total) * 100).toFixed(1) : "0.0";
+                const embed = new EmbedBuilder()
+                    .setColor("#5865F2")
+                    .setTitle(`👤 Perfil de ${user.username}`)
+                    .addFields(
+                        { name: "🏆 Vitórias", value: `${perfil.vitorias}`, inline: true },
+                        { name: "❌ Derrotas", value: `${perfil.derrotas}`, inline: true },
+                        { name: "📊 Winrate", value: `${wr}%`, inline: true }
+                    );
+                return await interaction.editReply({ embeds: [embed] });
+            }
+
+            if (customId === "btn_ver_ranking") {
+                const top20 = ranking.pegarTop20();
+                if (top20.length === 0) return await interaction.editReply({ content: "⚠️ Ninguém pontuou ainda!" });
+                const lista = top20.map((j, i) => `**#${i + 1}** <@${j.id}> — **${j.vitorias}** V`).join("\n");
+                const embed = new EmbedBuilder().setColor("#FEE75C").setTitle("🏆 Top 20 Ranking").setDescription(lista);
+                return await interaction.editReply({ embeds: [embed] });
+            }
+
+            if (customId === "abrir_ticket") {
+                // Adicione aqui a lógica de criação do seu ticket
+                // Exemplo simples de retorno:
+                return await interaction.editReply({ content: "✅ Sistema de tickets em breve!" });
+            }
+
+            // =========== LÓGICA DAS FILAS (ENTRAR / SAIR) ===========
             if (customId.startsWith("entrar_") || customId === "sair_fila") {
                 const painelId = message.id;
 
-                // Trava painéis antigos na primeira interação
-                if (!filas.getConfig(painelId)) {
-                    const btn = message.components?.[0]?.components?.[0];
-                    const label = btn?.label || "";
-                    const style = btn?.style;
-
-                    let modoDetectado = "Mobile";
-                    let mistoDetectado = false;
-
-                    if (label.includes("Gel")) {
-                        modoDetectado = "Mobile";
-                        mistoDetectado = false;
-                    } else if (style === 3) {
-                        modoDetectado = "Emulador";
-                        mistoDetectado = true;
-                    } else {
-                        modoDetectado = "Emulador";
-                        mistoDetectado = false;
-                    }
-
-                    const configAtual = pegarConfig();
-                    filas.setConfig(painelId, {
-                        ...configAtual,
-                        modo: modoDetectado,
-                        modoMisto: mistoDetectado
-                    });
+                // 🔥 CORREÇÃO MILIONÁRIA: Pega a config CONGELADA do filas.js!
+                const configReal = filas.getConfig(painelId);
+                if (!configReal) {
+                    return await interaction.editReply({ content: "❌ Este painel está corrompido. Use /setupenvia para gerar um novo." });
                 }
 
-                const configReal = filas.getConfig(painelId) || pegarConfig();
                 const isMisto = configReal.modoMisto === true;
                 const isEmulador = isMisto || (configReal.modo && configReal.modo.toLowerCase() === "emulador");
 
