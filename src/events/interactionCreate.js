@@ -20,6 +20,9 @@ const salvarConfig = configModule.salvarConfig || (() => ({}));
 
 module.exports = async (interaction) => {
     try {
+        // =========================================================
+        // COMANDOS DE SLASH (/comando)
+        // =========================================================
         if (interaction.isChatInputCommand()) {
             const command = interaction.client.commands.get(interaction.commandName);
             if (!command) return;
@@ -34,6 +37,9 @@ module.exports = async (interaction) => {
             return;
         }
 
+        // =========================================================
+        // PROCESSAMENTO DOS MODAIS (SUBMIT)
+        // =========================================================
         if (interaction.isModalSubmit()) {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
             const config = pegarConfig();
@@ -47,6 +53,12 @@ module.exports = async (interaction) => {
             } else if (interaction.customId === "modal_editar_quantidade") {
                 const qtd = parseInt(interaction.fields.getTextInputValue("input_quantidade"));
                 if (!isNaN(qtd) && qtd > 0) config.quantidade = qtd;
+            } else if (interaction.customId === "modal_editar_emoji_gel") {
+                config.emojiGelNormal = interaction.fields.getTextInputValue("input_emoji_gel");
+            } else if (interaction.customId === "modal_editar_emoji_emul") {
+                config.emojiEmul1 = interaction.fields.getTextInputValue("input_emoji_emul");
+            } else if (interaction.customId === "modal_editar_emoji_sair") {
+                config.emojiSair = interaction.fields.getTextInputValue("input_emoji_sair");
             }
 
             salvarConfig(config);
@@ -54,18 +66,19 @@ module.exports = async (interaction) => {
             const msgOriginal = interaction.message;
             if (msgOriginal && msgOriginal.embeds.length > 0) {
                 const novoPreview = painelBuilder(config, [], []);
-                await msgOriginal.edit({ embeds: novoPreview.embeds }).catch(() => {});
+                await msgOriginal.edit(novoPreview).catch(() => {});
             }
 
-            return await interaction.editReply({ content: "✅ Configuração alterada!" });
+            return await interaction.editReply({ content: "✅ Configuração alterada com sucesso!" });
         }
 
+        // =========================================================
+        // PROCESSAMENTO DOS BOTÕES
+        // =========================================================
         if (interaction.isButton()) {
-            const { customId, user, guild, channel, message } = interaction;
+            const { customId, user, message } = interaction;
 
-            // =========================================================
-            // BOTÕES QUE ABREM MODAIS
-            // =========================================================
+            // ⚠️ ATENÇÃO: Botões que abrem Modais DEVEM ser executados ANTES de qualquer deferReply!
             if (customId === "editar_nome_painel") {
                 const modal = new ModalBuilder().setCustomId("modal_editar_nome_painel").setTitle("Editar Nome");
                 const input = new TextInputBuilder().setCustomId("input_nome_painel").setLabel("Nome do Painel").setStyle(TextInputStyle.Short).setRequired(true);
@@ -94,6 +107,28 @@ module.exports = async (interaction) => {
                 return await interaction.showModal(modal);
             }
 
+            // --- Botões de Troca de Emoji ---
+            if (customId === "editar_emoji_gel") {
+                const modal = new ModalBuilder().setCustomId("modal_editar_emoji_gel").setTitle("Editar Emoji do Gel");
+                const input = new TextInputBuilder().setCustomId("input_emoji_gel").setLabel("Cole o Emoji ou ID").setStyle(TextInputStyle.Short).setRequired(true);
+                modal.addComponents(new ActionRowBuilder().addComponents(input));
+                return await interaction.showModal(modal);
+            }
+
+            if (customId === "editar_emoji_emul") {
+                const modal = new ModalBuilder().setCustomId("modal_editar_emoji_emul").setTitle("Editar Emoji do Emulador");
+                const input = new TextInputBuilder().setCustomId("input_emoji_emul").setLabel("Cole o Emoji ou ID").setStyle(TextInputStyle.Short).setRequired(true);
+                modal.addComponents(new ActionRowBuilder().addComponents(input));
+                return await interaction.showModal(modal);
+            }
+
+            if (customId === "editar_emoji_sair") {
+                const modal = new ModalBuilder().setCustomId("modal_editar_emoji_sair").setTitle("Editar Emoji do Botão Sair");
+                const input = new TextInputBuilder().setCustomId("input_emoji_sair").setLabel("Cole o Emoji ou ID").setStyle(TextInputStyle.Short).setRequired(true);
+                modal.addComponents(new ActionRowBuilder().addComponents(input));
+                return await interaction.showModal(modal);
+            }
+
             // =========================================================
             // BOTÕES COM RESPOSTA ADIADA (deferReply)
             // =========================================================
@@ -107,13 +142,13 @@ module.exports = async (interaction) => {
                 const msgOriginal = interaction.message;
                 if (msgOriginal && msgOriginal.embeds.length > 0) {
                     const novoPreview = painelBuilder(config, [], []);
-                    await msgOriginal.edit({ embeds: novoPreview.embeds }).catch(() => {});
+                    await msgOriginal.edit(novoPreview).catch(() => {});
                 }
-                return await interaction.editReply({ content: `🔄 Misto: ${config.modoMisto ? "Ativado" : "Desativado"}` });
+                return await interaction.editReply({ content: `🔄 Modo Misto: ${config.modoMisto ? "Ativado" : "Desativado"}` });
             }
 
             if (customId === "salvar_config") {
-                return await interaction.editReply({ content: "✅ Salvo!" });
+                return await interaction.editReply({ content: "✅ Configurações salvas!" });
             }
 
             // --- Lógica das Filas (Entrar/Sair) ---
@@ -123,7 +158,6 @@ module.exports = async (interaction) => {
                 
                 let tipoFila = customId.replace("entrar_", "");
                 
-                // Mapeamento correto do nome da fila
                 let nomeFila = tipoFila;
                 if (tipoFila === "gel_normal" || tipoFila === "normal") nomeFila = "normal";
                 else if (tipoFila === "gel_inf" || tipoFila === "infinito") nomeFila = "infinito";
@@ -141,7 +175,6 @@ module.exports = async (interaction) => {
                     if (!resultado.ok) return await interaction.editReply({ content: resultado.motivo || "Não foi possível entrar na fila." });
                 }
 
-                // Busca as listas correspondentes dependendo se o painel está no modo misto/emulador
                 const isMisto = !!configReal.modoMisto;
                 const lista1 = filas.jogadores(isMisto ? "1emulador" : "normal", painelId) || [];
                 const lista2 = filas.jogadores(isMisto ? "2emuladores" : "infinito", painelId) || [];
@@ -150,7 +183,7 @@ module.exports = async (interaction) => {
                     ...configReal,
                     modoMisto: isMisto,
                     modo: configReal.modo || "Mobile",
-                    valor: configReal.valor || "20,00",
+                    valor: configReal.valor || "5,00",
                     nomePainel: configReal.nomePainel || "PHANTOM",
                     quantidade: configReal.quantidade || 2
                 };
