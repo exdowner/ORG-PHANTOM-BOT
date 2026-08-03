@@ -45,6 +45,7 @@ module.exports = async (interaction) => {
                 config.valor = interaction.fields.getTextInputValue("input_valor");
             } else if (interaction.customId === "modal_editar_modo") {
                 config.modo = interaction.fields.getTextInputValue("input_modo");
+                config.modoMisto = false; // força sair do Misto
             } else if (interaction.customId === "modal_editar_quantidade") {
                 const qtd = parseInt(interaction.fields.getTextInputValue("input_quantidade"));
                 if (!isNaN(qtd) && qtd > 0) config.quantidade = qtd;
@@ -59,6 +60,7 @@ module.exports = async (interaction) => {
                     embed.spliceFields(2, 1, { name: "**💰 Valor:**", value: `\`${config.valor || "20,00"}\``, inline: true });
                 } else if (interaction.customId === "modal_editar_modo") {
                     embed.spliceFields(1, 1, { name: "**🎮 Modo:**", value: `\`${config.modo || "Mobile"}\``, inline: true });
+                    embed.spliceFields(4, 1, { name: "**🔀 Misto:**", value: "Desativado", inline: false });
                 } else if (interaction.customId === "modal_editar_quantidade") {
                     embed.spliceFields(3, 1, { name: "**👥 Quantidade:**", value: `\`${config.quantidade} jogadores\``, inline: true });
                 }
