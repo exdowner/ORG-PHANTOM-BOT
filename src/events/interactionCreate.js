@@ -191,8 +191,20 @@ module.exports = async (interaction) => {
                 return await interaction.editReply({ embeds: [embed] });
             }
 
-            // =========== BOTÃO DE TICKET (CORRIGIDO E FUNCIONAL!) ===========
+            // =========== CRIAÇÃO E FECHAMENTO DE TICKETS (CORRIGIDO!) ===========
             if (customId === "abrir_ticket") {
+                // Verifica se o usuário já possui um ticket aberto
+                const ticketsExistentes = guild.channels.cache.filter(c => 
+                    c.type === ChannelType.GuildText && 
+                    c.name.startsWith(`ticket-${user.username}`)
+                );
+                
+                if (ticketsExistentes.size > 0) {
+                    return await interaction.editReply({ 
+                        content: `❌ Você já possui um ticket aberto! Acesse: <#${ticketsExistentes.first().id}>` 
+                    });
+                }
+
                 try {
                     const nomeTicket = `ticket-${user.username}`;
                     
@@ -212,9 +224,19 @@ module.exports = async (interaction) => {
                         ]
                     });
 
-                    // Envia uma mensagem de boas-vindas dentro do ticket
+                    // Botão para fechar o ticket
+                    const fecharRow = new ActionRowBuilder()
+                        .addComponents(
+                            new ButtonBuilder()
+                                .setCustomId("fechar_ticket")
+                                .setLabel("🔒 Fechar Ticket")
+                                .setStyle(ButtonStyle.Danger)
+                        );
+
+                    // Envia uma mensagem de boas-vindas dentro do ticket com o botão
                     await ticketChannel.send({
-                        content: `👋 Olá <@${user.id}>, bem-vindo ao seu ticket de suporte!\n\nDescreva o seu problema abaixo que nossa equipe irá te ajudar o mais rápido possível.\n\n**Para fechar o ticket, use:** \`/fechar_ticket\``
+                        content: `👋 Olá <@${user.id}>, bem-vindo ao seu ticket de suporte!\n\nDescreva o seu problema abaixo que nossa equipe irá te ajudar o mais rápido possível.\n\nClique no botão abaixo para fechar este ticket quando quiser.`,
+                        components: [fecharRow]
                     });
 
                     return await interaction.editReply({ 
@@ -226,6 +248,27 @@ module.exports = async (interaction) => {
                     return await interaction.editReply({ 
                         content: `❌ Erro ao criar o ticket. Verifique se o bot tem permissão para criar canais.` 
                     });
+                }
+            }
+
+            // Botão para FECHAR o ticket
+            if (customId === "fechar_ticket") {
+                // Só quem está no canal pode fechar (ou admins)
+                const canal = interaction.channel;
+                
+                // Verifica se o canal é um ticket
+                if (!canal.name.startsWith("ticket-")) {
+                    return await interaction.editReply({ content: "❌ Este comando só pode ser usado em um ticket." });
+                }
+
+                try {
+                    // Deleta o canal
+                    await canal.delete();
+                    // Responde ao usuário (a resposta é enviada antes do canal sumir)
+                    await interaction.editReply({ content: "✅ Ticket fechado com sucesso!" });
+                } catch (err) {
+                    console.error("Erro ao fechar ticket:", err);
+                    await interaction.editReply({ content: "❌ Erro ao fechar o ticket. Verifique minhas permissões." });
                 }
             }
 
