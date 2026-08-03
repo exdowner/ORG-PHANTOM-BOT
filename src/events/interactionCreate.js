@@ -168,12 +168,11 @@ module.exports = async (interaction) => {
                 return await interaction.editReply({ content: "✅ Salvo!" });
             }
 
-            // ================== BOTÃO "ENVIAR PAINEL" – AGORA ENVIA TODOS OS VALORES ==================
+            // ================== BOTÃO "ENVIAR PAINEL" ==================
             if (customId === "enviar_painel_agora") {
-                const configBase = pegarConfig(); // Configuração atual (modo, misto, quantidade, emojis)
+                const configBase = pegarConfig();
                 if (!configBase.quantidade) configBase.quantidade = 1;
 
-                // Lista de todos os valores que aparecem no select
                 const listaValores = [
                     "100,00", "50,00", "20,00", "10,00", "5,00", 
                     "3,00", "2,00", "1,00", "0,50"
@@ -182,32 +181,25 @@ module.exports = async (interaction) => {
                 let mensagensEnviadas = 0;
 
                 for (const valor of listaValores) {
-                    // Cria uma cópia da configuração base e altera apenas o valor
                     const configAtual = { ...configBase, valor: valor };
-
                     const painel = painelBuilder(configAtual, [], []);
-                    if (!painel.components || painel.components.length === 0) {
-                        continue; // Pula se o painel não for gerado corretamente
-                    }
+                    if (!painel.components || painel.components.length === 0) continue;
 
                     try {
                         const msg = await interaction.channel.send({
                             embeds: painel.embeds,
                             components: painel.components
                         });
-                        // Congela a configuração individualmente para cada painel
                         filas.setConfig(msg.id, configAtual);
                         mensagensEnviadas++;
                     } catch (err) {
                         console.error(`Erro ao enviar painel com valor ${valor}:`, err);
                     }
-
-                    // Pequeno delay para evitar rate limit (500ms entre cada envio)
                     await new Promise(resolve => setTimeout(resolve, 500));
                 }
 
                 return await interaction.editReply({ 
-                    content: `✅ Foram enviados ${mensagensEnviadas} painéis, um para cada valor da lista!` 
+                    content: `✅ Foram enviados ${mensagensEnviadas} painéis!` 
                 });
             }
 
@@ -298,11 +290,47 @@ module.exports = async (interaction) => {
                 }
             }
 
-            // ================== LÓGICA DAS FILAS (ENTRAR / SAIR) ==================
+            // ================== LÓGICA DAS FILAS (COM RECUPERAÇÃO DE FALHA) ==================
             if (customId.startsWith("entrar_") || customId === "sair_fila") {
                 const painelId = message.id;
 
-                const configReal = filas.getConfig(painelId);
+                // Tenta pegar a configuração congelada
+                let configReal = filas.getConfig(painelId);
+
+                // 🔥 CASO O BOT TENHA REINICIADO E PERDIDO A MEMÓRIA: RECONSTRUÍMOS A CONFIGURAÇÃO!
+                if (!configReal) {
+                    console.log(`⚠️ [RECUPERAÇÃO] Configuração perdida para ${painelId}. Reconstruindo...`);
+                    
+                    // Tenta adivinhar a configuração olhando o título do painel atual
+                    const tituloAtual = message.embeds[0]?.title || "";
+                    const partesTitulo = tituloAtual.split("|");
+                    const nomePainel = partesTitulo[0]?.trim() || "PHANTOM";
+                    const valor = partesTitulo[1]?.trim() || "20,00";
+                    
+                    // Verifica se o título tem indícios de ser Misto ou Emulador
+                    const temEmulador = tituloAtual.includes("Emulador") || tituloAtual.includes("Emuladores");
+                    const temMisto = tituloAtual.toLowerCase().includes("misto");
+
+                    // Cria uma configuração "provisória" que salva o bot de cair no erro
+                    const configFallback = {
+                        modoMisto: temMisto || temEmulador,
+                        modo: temEmulador ? "Emulador" : "Mobile",
+                        valor: valor,
+                        nomePainel: nomePainel,
+                        emojiGelNormal: null,
+                        emojiGelInfinito: null,
+                        emojiEmul1: null,
+                        emojiEmul2: null,
+                        emojiSair: null,
+                        quantidade: 1 // Fallback padrão
+                    };
+
+                    // Salva essa config recuperada na memória para o resto da sessão
+                    filas.setConfig(painelId, configFallback);
+                    configReal = filas.getConfig(painelId);
+                }
+
+                // Se mesmo assim não tiver config, aí sim dá o erro (proteção final)
                 if (!configReal) {
                     return await interaction.editReply({ content: "❌ Este painel está corrompido. Use /setupenvia para gerar um novo." });
                 }
