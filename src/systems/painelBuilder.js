@@ -18,23 +18,25 @@ module.exports = (config, fila1 = [], fila2 = []) => {
 
     const row = new ActionRowBuilder();
 
-    // MODO MISTO (EMULADOR)
+    // =====================
+    // MODO MISTO (EMULADOR) -> 🔵 AMBOS AZUIS
+    // =====================
     if (config.modoMisto === true) {
         embed.addFields(
-            { name: `1 Emulador (${fila1.length}/${qtd})`, value: formatarFila(fila1), inline: false },
-            { name: `2 Emuladores (${fila2.length}/${qtd})`, value: formatarFila(fila2), inline: false }
+            { name: `🟢 1 Emulador (${fila1.length}/${qtd})`, value: formatarFila(fila1), inline: false },
+            { name: `🟢 2 Emuladores (${fila2.length}/${qtd})`, value: formatarFila(fila2), inline: false }
         );
 
         const btn1 = new ButtonBuilder()
             .setCustomId("entrar_1emulador")
             .setLabel("1 Emulador")
-            .setStyle(ButtonStyle.Success);
+            .setStyle(ButtonStyle.Primary); // 🔵 AZUL
         if (config.emojiEmul1) btn1.setEmoji(config.emojiEmul1);
 
         const btn2 = new ButtonBuilder()
             .setCustomId("entrar_2emuladores")
             .setLabel("2 Emuladores")
-            .setStyle(ButtonStyle.Success);
+            .setStyle(ButtonStyle.Primary); // 🔵 AZUL
         if (config.emojiEmul2) btn2.setEmoji(config.emojiEmul2);
 
         const btnSair = new ButtonBuilder()
@@ -46,7 +48,9 @@ module.exports = (config, fila1 = [], fila2 = []) => {
         row.addComponents(btn1, btn2, btnSair);
 
     } else {
-        // MODO GEL (MOBILE)
+        // =====================
+        // MODO GEL (MOBILE) -> 🔵 AMBOS AZUIS
+        // =====================
         embed.addFields(
             { name: `Gel Normal (${fila1.length}/${qtd})`, value: formatarFila(fila1), inline: false },
             { name: `Gel Infinito (${fila2.length}/${qtd})`, value: formatarFila(fila2), inline: false }
@@ -58,11 +62,10 @@ module.exports = (config, fila1 = [], fila2 = []) => {
             .setStyle(ButtonStyle.Primary); // 🔵 AZUL
         if (config.emojiGelNormal) btnGelNormal.setEmoji(config.emojiGelNormal);
 
-        // 🔥 CORREÇÃO AQUI: Agora os dois botões de gel são AZUIS (Primary)
         const btnGelInf = new ButtonBuilder()
             .setCustomId("entrar_gel_inf")
             .setLabel("Gel Infinito")
-            .setStyle(ButtonStyle.Primary); // 🔵 AZUL (CORRIGIDO!)
+            .setStyle(ButtonStyle.Primary); // 🔵 AZUL
         if (config.emojiGelInfinito) btnGelInf.setEmoji(config.emojiGelInfinito);
         
         const btnSair = new ButtonBuilder()
