@@ -18,13 +18,11 @@ module.exports = (config, fila1 = [], fila2 = []) => {
 
     const row = new ActionRowBuilder();
 
-    // =====================
-    // MODO MISTO (EMULADOR) -> 🔵 AMBOS AZUIS
-    // =====================
+    // MODO MISTO (EMULADOR) -> 🔵 BOTÕES AZUIS, SEM EMOJIS NA LISTA
     if (config.modoMisto === true) {
         embed.addFields(
-            { name: `🟢 1 Emulador (${fila1.length}/${qtd})`, value: formatarFila(fila1), inline: false },
-            { name: `🟢 2 Emuladores (${fila2.length}/${qtd})`, value: formatarFila(fila2), inline: false }
+            { name: `1 Emulador (${fila1.length}/${qtd})`, value: formatarFila(fila1), inline: false },
+            { name: `2 Emuladores (${fila2.length}/${qtd})`, value: formatarFila(fila2), inline: false }
         );
 
         const btn1 = new ButtonBuilder()
@@ -48,9 +46,7 @@ module.exports = (config, fila1 = [], fila2 = []) => {
         row.addComponents(btn1, btn2, btnSair);
 
     } else {
-        // =====================
-        // MODO GEL (MOBILE) -> 🔵 AMBOS AZUIS
-        // =====================
+        // MODO GEL (MOBILE) -> 🔵 BOTÕES AZUIS
         embed.addFields(
             { name: `Gel Normal (${fila1.length}/${qtd})`, value: formatarFila(fila1), inline: false },
             { name: `Gel Infinito (${fila2.length}/${qtd})`, value: formatarFila(fila2), inline: false }

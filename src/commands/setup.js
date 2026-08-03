@@ -22,7 +22,7 @@ module.exports = {
                 { name: "**🎮 Modo:**", value: `\`${config.modo || "Mobile"}\``, inline: true },
                 { name: "**💰 Valor:**", value: `\`${config.valor || "20,00"}\``, inline: true },
                 { name: "**👥 Quantidade:**", value: `\`${config.quantidade} jogadores\``, inline: true },
-                { name: "**🔀 Misto:**", value: config.modoMisto ? "🟢 Ativado" : "🔵 Desativado", inline: false }
+                { name: "**🔀 Misto:**", value: config.modoMisto ? "Ativado" : "Desativado", inline: false }
             )
             .setFooter({ text: "Só você pode ver esta mensagem • Ignorar mensagem" });
 
@@ -43,10 +43,10 @@ module.exports = {
             new ButtonBuilder().setCustomId("escolher_emoji_emul2").setLabel("💻 Emul 2").setStyle(ButtonStyle.Success)
         );
 
-        // 🔥 AQUI ESTÁ O "MISTO = VERDE": O botão virou Success (Verde)
+        // 🔥 REMOVI O EMOJI VERDE DO BOTÃO E DEIXEI ELE SÓ O TEXTO
         const row4 = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId("escolher_emoji_sair").setLabel("🚪 Sair").setStyle(ButtonStyle.Danger),
-            new ButtonBuilder().setCustomId("ativar_misto").setLabel("🟢 Ativar Misto").setStyle(ButtonStyle.Success), 
+            new ButtonBuilder().setCustomId("ativar_misto").setLabel("Ativar Misto").setStyle(ButtonStyle.Success), // 🟢 VERDE (sem emoji na frente)
             new ButtonBuilder().setCustomId("salvar_config").setLabel("💾 Salvar").setStyle(ButtonStyle.Success)
         );
 
