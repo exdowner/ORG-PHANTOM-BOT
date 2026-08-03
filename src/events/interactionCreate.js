@@ -167,7 +167,7 @@ module.exports = async (interaction) => {
                 return await interaction.editReply({ content: "✅ Salvo!" });
             }
 
-            // =========== BOTÕES DE RANKING, PERFIL E SUPORTE (ADICIONADOS!) ===========
+            // =========== BOTÕES DE RANKING E PERFIL ===========
             if (customId === "btn_meu_perfil") {
                 const perfil = ranking.pegarPerfil(user.id);
                 const total = perfil.vitorias + perfil.derrotas;
@@ -191,10 +191,42 @@ module.exports = async (interaction) => {
                 return await interaction.editReply({ embeds: [embed] });
             }
 
+            // =========== BOTÃO DE TICKET (CORRIGIDO E FUNCIONAL!) ===========
             if (customId === "abrir_ticket") {
-                // Adicione aqui a lógica de criação do seu ticket
-                // Exemplo simples de retorno:
-                return await interaction.editReply({ content: "✅ Sistema de tickets em breve!" });
+                try {
+                    const nomeTicket = `ticket-${user.username}`;
+                    
+                    // Cria o canal de texto privado
+                    const ticketChannel = await guild.channels.create({
+                        name: nomeTicket,
+                        type: ChannelType.GuildText,
+                        permissionOverwrites: [
+                            {
+                                id: guild.id,
+                                deny: [PermissionFlagsBits.ViewChannel], // Esconde de todo mundo
+                            },
+                            {
+                                id: user.id,
+                                allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory], // Só o usuário vê
+                            }
+                        ]
+                    });
+
+                    // Envia uma mensagem de boas-vindas dentro do ticket
+                    await ticketChannel.send({
+                        content: `👋 Olá <@${user.id}>, bem-vindo ao seu ticket de suporte!\n\nDescreva o seu problema abaixo que nossa equipe irá te ajudar o mais rápido possível.\n\n**Para fechar o ticket, use:** \`/fechar_ticket\``
+                    });
+
+                    return await interaction.editReply({ 
+                        content: `✅ Ticket criado com sucesso! Acesse: <#${ticketChannel.id}>` 
+                    });
+
+                } catch (err) {
+                    console.error("Erro ao criar ticket:", err);
+                    return await interaction.editReply({ 
+                        content: `❌ Erro ao criar o ticket. Verifique se o bot tem permissão para criar canais.` 
+                    });
+                }
             }
 
             // =========== LÓGICA DAS FILAS (ENTRAR / SAIR) ===========
