@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits } = require("discord.js");
+const { SlashCommandBuilder, MessageFlags, PermissionFlagsBits } = require("discord.js");
 const { pegarConfig } = require("../systems/config.js");
 const painelBuilder = require("../systems/painelBuilder.js");
 
@@ -9,21 +9,24 @@ module.exports = {
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     async execute(interaction) {
+        // ⚠️ CORREÇÃO MILIONÁRIA: Deferir a resposta para ganhar tempo!
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
         const config = pegarConfig();
         if (!config.quantidade) config.quantidade = 2;
 
-        // Gera o painel correto com a configuração atual do bot (Misto ou Gel)
+        // Gera o painel com a configuração atual
         const painel = painelBuilder(config, [], []);
 
-        // Envia para o chat
+        // Envia o painel para o canal público
         await interaction.channel.send({
             embeds: painel.embeds,
             components: painel.components
         });
 
-        await interaction.reply({ 
-            content: "✅ Painel enviado!", 
-            ephemeral: true 
+        // Finaliza a resposta ao admin usando editReply (já que deferimos antes)
+        await interaction.editReply({ 
+            content: "✅ Painel enviado com sucesso!" 
         });
     }
 };

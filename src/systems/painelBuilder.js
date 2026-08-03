@@ -18,30 +18,60 @@ module.exports = (config, fila1 = [], fila2 = []) => {
 
     const row = new ActionRowBuilder();
 
-    const emojiGel = "<:gloowall:1532885980422475868>"; 
-    const emojiEmulador = "<:bluestacks:1532885656030806147>"; 
-    const emojiSair = "<:leave:1532886068767228136>"; 
-
+    // MODO MISTO
     if (config.modoMisto === true) {
         embed.addFields(
             { name: `1 Emulador (${fila1.length}/${qtd})`, value: formatarFila(fila1), inline: false },
             { name: `2 Emuladores (${fila2.length}/${qtd})`, value: formatarFila(fila2), inline: false }
         );
-        row.addComponents(
-            new ButtonBuilder().setCustomId("entrar_1emulador").setLabel("1 Emulador").setEmoji(emojiEmulador).setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId("entrar_2emuladores").setLabel("2 Emuladores").setEmoji(emojiEmulador).setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId("sair_fila").setLabel("Sair").setEmoji(emojiSair).setStyle(ButtonStyle.Danger)
-        );
+
+        // 🔥 CRIA O BOTÃO SEM EMOJI PRIMEIRO
+        const btn1 = new ButtonBuilder()
+            .setCustomId("entrar_1emulador")
+            .setLabel("1 Emulador")
+            .setStyle(ButtonStyle.Success);
+        if (config.emojiEmul1) btn1.setEmoji(config.emojiEmul1); // Só coloca se existir
+
+        const btn2 = new ButtonBuilder()
+            .setCustomId("entrar_2emuladores")
+            .setLabel("2 Emuladores")
+            .setStyle(ButtonStyle.Success);
+        if (config.emojiEmul2) btn2.setEmoji(config.emojiEmul2);
+
+        const btnSair = new ButtonBuilder()
+            .setCustomId("sair_fila")
+            .setLabel("Sair")
+            .setStyle(ButtonStyle.Danger);
+        if (config.emojiSair) btnSair.setEmoji(config.emojiSair);
+
+        row.addComponents(btn1, btn2, btnSair);
+
     } else {
+        // MODO GEL
         embed.addFields(
             { name: `Gel Normal (${fila1.length}/${qtd})`, value: formatarFila(fila1), inline: false },
             { name: `Gel Infinito (${fila2.length}/${qtd})`, value: formatarFila(fila2), inline: false }
         );
-        row.addComponents(
-            new ButtonBuilder().setCustomId("entrar_gel_normal").setLabel("Gel Normal").setEmoji(emojiGel).setStyle(ButtonStyle.Primary),
-            new ButtonBuilder().setCustomId("entrar_gel_inf").setLabel("Gel Infinito").setEmoji(emojiGel).setStyle(ButtonStyle.Primary),
-            new ButtonBuilder().setCustomId("sair_fila").setLabel("Sair").setEmoji(emojiSair).setStyle(ButtonStyle.Danger)
-        );
+
+        const btnGelNormal = new ButtonBuilder()
+            .setCustomId("entrar_gel_normal")
+            .setLabel("Gel Normal")
+            .setStyle(ButtonStyle.Primary);
+        if (config.emojiGelNormal) btnGelNormal.setEmoji(config.emojiGelNormal);
+
+        const btnGelInf = new ButtonBuilder()
+            .setCustomId("entrar_gel_inf")
+            .setLabel("Gel Infinito")
+            .setStyle(ButtonStyle.Success);
+        if (config.emojiGelInfinito) btnGelInf.setEmoji(config.emojiGelInfinito);
+        
+        const btnSair = new ButtonBuilder()
+            .setCustomId("sair_fila")
+            .setLabel("Sair")
+            .setStyle(ButtonStyle.Danger);
+        if (config.emojiSair) btnSair.setEmoji(config.emojiSair);
+
+        row.addComponents(btnGelNormal, btnGelInf, btnSair);
     }
 
     return { embeds: [embed], components: [row] };
