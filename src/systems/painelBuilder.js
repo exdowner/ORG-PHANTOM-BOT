@@ -18,9 +18,9 @@ module.exports = (config, fila1 = [], fila2 = []) => {
 
     const row = new ActionRowBuilder();
 
-    // ================================
+    // ========================================
     // MODO MISTO (EMULADOR) -> 🟢 VERDE
-    // ================================
+    // ========================================
     if (config.modoMisto === true) {
         embed.addFields(
             { name: `1 Emulador (${fila1.length}/${qtd})`, value: formatarFila(fila1), inline: false },
@@ -30,13 +30,13 @@ module.exports = (config, fila1 = [], fila2 = []) => {
         const btn1 = new ButtonBuilder()
             .setCustomId("entrar_1emulador")
             .setLabel("1 Emulador")
-            .setStyle(ButtonStyle.Success); // 🟢 VERDE (CORRIGIDO!)
+            .setStyle(ButtonStyle.Success); // 🟢 VERDE
         if (config.emojiEmul1) btn1.setEmoji(config.emojiEmul1);
 
         const btn2 = new ButtonBuilder()
             .setCustomId("entrar_2emuladores")
             .setLabel("2 Emuladores")
-            .setStyle(ButtonStyle.Success); // 🟢 VERDE (CORRIGIDO!)
+            .setStyle(ButtonStyle.Success); // 🟢 VERDE
         if (config.emojiEmul2) btn2.setEmoji(config.emojiEmul2);
 
         const btnSair = new ButtonBuilder()
@@ -48,9 +48,9 @@ module.exports = (config, fila1 = [], fila2 = []) => {
         row.addComponents(btn1, btn2, btnSair);
 
     } else {
-        // ================================
+        // ========================================
         // MODO GEL (MOBILE) -> 🔵 AZUL
-        // ================================
+        // ========================================
         embed.addFields(
             { name: `Gel Normal (${fila1.length}/${qtd})`, value: formatarFila(fila1), inline: false },
             { name: `Gel Infinito (${fila2.length}/${qtd})`, value: formatarFila(fila2), inline: false }

@@ -36,9 +36,7 @@ module.exports = async (interaction) => {
             return;
         }
 
-        // =========================================================
-        // 1. MODAIS (Editar Nome, Valor, Modo, Qtd)
-        // =========================================================
+        // 1. MODAIS
         if (interaction.isModalSubmit()) {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
             const config = pegarConfig();
@@ -65,13 +63,9 @@ module.exports = async (interaction) => {
             return await interaction.editReply({ content: "✅ Configuração alterada!" });
         }
 
-        // =========================================================
-        // 2. MENU DE EMOJIS (O QUE FALTAVA!)
-        // =========================================================
+        // 2. MENU DE EMOJIS
         if (interaction.isStringSelectMenu()) {
-            // Precisa de deferReply para responder a tempo
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
-            
             const config = pegarConfig();
             const valorEscolhido = interaction.values[0];
 
@@ -85,13 +79,11 @@ module.exports = async (interaction) => {
             return await interaction.editReply({ content: `✅ Emoji atualizado com sucesso!` });
         }
 
-        // =========================================================
         // 3. BOTÕES
-        // =========================================================
         if (interaction.isButton()) {
             const { customId, user, guild, channel, message } = interaction;
 
-            // BOTÕES QUE ABREM MODAIS (SEM deferReply)
+            // BOTÕES QUE ABREM MODAIS
             if (customId === "editar_nome_painel") {
                 const modal = new ModalBuilder().setCustomId("modal_editar_nome_painel").setTitle("Editar Nome");
                 const input = new TextInputBuilder().setCustomId("input_nome_painel").setLabel("Nome do Painel").setStyle(TextInputStyle.Short).setRequired(true);
@@ -120,7 +112,7 @@ module.exports = async (interaction) => {
                 return await interaction.showModal(modal);
             }
 
-            // BOTÕES QUE ABREM O MENU DE EMOJIS (SEM deferReply)
+            // BOTÕES DE EMOJI
             if (customId.startsWith("escolher_emoji_")) {
                 const tipo = customId.replace("escolher_emoji_", "");
                 const emojisDoServidor = guild.emojis.cache.first(25);
@@ -145,7 +137,7 @@ module.exports = async (interaction) => {
                 return await interaction.reply({ content: "Escolha o emoji abaixo:", components: [row], flags: MessageFlags.Ephemeral });
             }
 
-            // BOTÕES DE AÇÃO (PRECISAM DE deferReply)
+            // BOTÕES DE AÇÃO
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
 
             if (customId === "ativar_misto") {
@@ -170,7 +162,10 @@ module.exports = async (interaction) => {
                 const painelId = message.id;
                 let tipoFila = customId.replace("entrar_", "");
                 
-                const isEmulador = tipoFila.includes("emulador") || tipoFila.includes("emuladores");
+                // 🔥🔥🔥 CORREÇÃO MILIONÁRIA AQUI!
+                // Lemos o BANCO DE DADOS para saber se é Misto, não o título!
+                const configReal = pegarConfig();
+                const isEmulador = configReal.modoMisto === true; 
 
                 let nomeFila = tipoFila;
                 if (tipoFila === "gel_normal") nomeFila = "normal";
@@ -190,10 +185,9 @@ module.exports = async (interaction) => {
                 const lista1 = filas.jogadores(isEmulador ? "1emulador" : "normal", painelId);
                 const lista2 = filas.jogadores(isEmulador ? "2emuladores" : "infinito", painelId);
                 
-                const configReal = pegarConfig();
-
+                // Passa a configuração REAL (salva no banco) pro painelBuilder
                 const configMock = {
-                    modoMisto: isEmulador,
+                    modoMisto: isEmulador, // ✅ Isso é o que manda!
                     modo: configReal.modo || "Mobile",
                     valor: configReal.valor || "20,00",
                     nomePainel: configReal.nomePainel || "PHANTOM",
