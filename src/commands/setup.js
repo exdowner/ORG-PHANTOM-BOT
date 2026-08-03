@@ -11,7 +11,6 @@ module.exports = {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
         const config = pegarConfig();
 
-        // Se não tiver quantidade definida, assume 1x1 (multiplicador 1)
         if (!config.quantidade) config.quantidade = 1;
 
         const embed = new EmbedBuilder()
@@ -27,7 +26,6 @@ module.exports = {
             )
             .setFooter({ text: "Só você pode ver esta mensagem • Ignorar mensagem" });
 
-        // LINHA 1: Botões de ação (Nome, Modo, Misto, Salvar)
         const row1 = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId("editar_nome_painel").setLabel("📛 Nome").setStyle(ButtonStyle.Secondary),
             new ButtonBuilder().setCustomId("editar_modo").setLabel("🎮 Modo").setStyle(ButtonStyle.Secondary),
@@ -35,7 +33,6 @@ module.exports = {
             new ButtonBuilder().setCustomId("salvar_config").setLabel("💾 Salvar").setStyle(ButtonStyle.Success)
         );
 
-        // LINHA 2: Seletor de Valor
         const row2 = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("select_valor")
@@ -53,7 +50,6 @@ module.exports = {
                 )
         );
 
-        // LINHA 3: Seletor de Multiplicador (1x1, 2x2, 3x3, 4x4)
         const row3 = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("select_quantidade")
@@ -66,13 +62,11 @@ module.exports = {
                 )
         );
 
-        // LINHA 4: Botões de Emojis (Gel)
         const row4 = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId("escolher_emoji_gel_normal").setLabel("🧊 Gel Normal").setStyle(ButtonStyle.Success),
             new ButtonBuilder().setCustomId("escolher_emoji_gel_inf").setLabel("♾️ Gel Inf").setStyle(ButtonStyle.Success)
         );
 
-        // LINHA 5: Botões de Emojis (Emuladores e Sair) + Botão "Enviar Painel"
         const row5 = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId("escolher_emoji_emul1").setLabel("📱 Emul 1").setStyle(ButtonStyle.Success),
             new ButtonBuilder().setCustomId("escolher_emoji_emul2").setLabel("💻 Emul 2").setStyle(ButtonStyle.Success),

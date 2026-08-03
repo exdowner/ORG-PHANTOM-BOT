@@ -36,7 +36,7 @@ module.exports = async (interaction) => {
             return;
         }
 
-        // ----------- MODAIS (Nome e Modo apenas) -----------
+        // ----------- MODAIS (Nome e Modo) -----------
         if (interaction.isModalSubmit()) {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
             const config = pegarConfig();
@@ -66,7 +66,7 @@ module.exports = async (interaction) => {
             return await interaction.editReply({ content: "✅ Configuração alterada!" });
         }
 
-        // ----------- MENUS DE SELEÇÃO (Valor, Quantidade e Emojis) -----------
+        // ----------- MENUS DE SELEÇÃO (Valor, Quantidade, Emojis) -----------
         if (interaction.isStringSelectMenu()) {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
             const config = pegarConfig();
@@ -110,7 +110,7 @@ module.exports = async (interaction) => {
         if (interaction.isButton()) {
             const { customId, user, guild, message, channel } = interaction;
 
-            // =========== BOTÕES QUE ABREM MODAIS (NÃO TEM deferReply) ===========
+            // ================== BOTÕES QUE ABREM MODAIS (SEM deferReply) ==================
             if (customId === "editar_nome_painel") {
                 const modal = new ModalBuilder().setCustomId("modal_editar_nome_painel").setTitle("Editar Nome");
                 const input = new TextInputBuilder().setCustomId("input_nome_painel").setLabel("Nome do Painel").setStyle(TextInputStyle.Short).setRequired(true);
@@ -125,7 +125,7 @@ module.exports = async (interaction) => {
                 return await interaction.showModal(modal);
             }
 
-            // =========== BOTÕES DE ESCOLHA DE EMOJI (NÃO TEM deferReply) ===========
+            // ================== BOTÕES DE EMOJI (SEM deferReply) ==================
             if (customId.startsWith("escolher_emoji_")) {
                 const tipo = customId.replace("escolher_emoji_", "");
                 const emojisDoServidor = guild.emojis.cache.first(25);
@@ -147,7 +147,7 @@ module.exports = async (interaction) => {
                 return await interaction.reply({ content: "Escolha o emoji abaixo:", components: [row], flags: MessageFlags.Ephemeral });
             }
 
-            // =========== BOTÕES QUE PRECISAM DE deferReply ===========
+            // ================== BOTÕES QUE PRECISAM DE deferReply ==================
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
 
             if (customId === "ativar_misto") {
@@ -168,22 +168,50 @@ module.exports = async (interaction) => {
                 return await interaction.editReply({ content: "✅ Salvo!" });
             }
 
-            // 🔥 BOTÃO "ENVIAR PAINEL" (Simula o /setupenvia)
+            // ================== BOTÃO "ENVIAR PAINEL" – AGORA ENVIA TODOS OS VALORES ==================
             if (customId === "enviar_painel_agora") {
-                const config = pegarConfig();
-                if (!config.quantidade) config.quantidade = 1;
+                const configBase = pegarConfig(); // Configuração atual (modo, misto, quantidade, emojis)
+                if (!configBase.quantidade) configBase.quantidade = 1;
 
-                const painel = painelBuilder(config, [], []);
-                const msg = await interaction.channel.send({
-                    embeds: painel.embeds,
-                    components: painel.components
+                // Lista de todos os valores que aparecem no select
+                const listaValores = [
+                    "100,00", "50,00", "20,00", "10,00", "5,00", 
+                    "3,00", "2,00", "1,00", "0,50"
+                ];
+
+                let mensagensEnviadas = 0;
+
+                for (const valor of listaValores) {
+                    // Cria uma cópia da configuração base e altera apenas o valor
+                    const configAtual = { ...configBase, valor: valor };
+
+                    const painel = painelBuilder(configAtual, [], []);
+                    if (!painel.components || painel.components.length === 0) {
+                        continue; // Pula se o painel não for gerado corretamente
+                    }
+
+                    try {
+                        const msg = await interaction.channel.send({
+                            embeds: painel.embeds,
+                            components: painel.components
+                        });
+                        // Congela a configuração individualmente para cada painel
+                        filas.setConfig(msg.id, configAtual);
+                        mensagensEnviadas++;
+                    } catch (err) {
+                        console.error(`Erro ao enviar painel com valor ${valor}:`, err);
+                    }
+
+                    // Pequeno delay para evitar rate limit (500ms entre cada envio)
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+
+                return await interaction.editReply({ 
+                    content: `✅ Foram enviados ${mensagensEnviadas} painéis, um para cada valor da lista!` 
                 });
-
-                filas.setConfig(msg.id, config);
-                return await interaction.editReply({ content: "✅ Painel enviado com sucesso!" });
             }
 
-            // =========== BOTÕES DE RANKING E PERFIL ===========
+            // ================== PERFIL E RANKING ==================
             if (customId === "btn_meu_perfil") {
                 const perfil = ranking.pegarPerfil(user.id);
                 const total = perfil.vitorias + perfil.derrotas;
@@ -207,7 +235,7 @@ module.exports = async (interaction) => {
                 return await interaction.editReply({ embeds: [embed] });
             }
 
-            // =========== CRIAÇÃO E FECHAMENTO DE TICKETS ===========
+            // ================== TICKETS ==================
             if (customId === "abrir_ticket") {
                 const ticketsExistentes = guild.channels.cache.filter(c => 
                     c.type === ChannelType.GuildText && 
@@ -270,11 +298,10 @@ module.exports = async (interaction) => {
                 }
             }
 
-            // =========== LÓGICA DAS FILAS (ENTRAR / SAIR) ===========
+            // ================== LÓGICA DAS FILAS (ENTRAR / SAIR) ==================
             if (customId.startsWith("entrar_") || customId === "sair_fila") {
                 const painelId = message.id;
 
-                // 🔥 Pega a configuração CONGELADA do filas.js
                 const configReal = filas.getConfig(painelId);
                 if (!configReal) {
                     return await interaction.editReply({ content: "❌ Este painel está corrompido. Use /setupenvia para gerar um novo." });
@@ -328,5 +355,10 @@ module.exports = async (interaction) => {
         }
     } catch (err) {
         console.error("Erro geral na interação:", err);
+        if (!interaction.replied && !interaction.deferred) {
+            try {
+                await interaction.reply({ content: "❌ Ocorreu um erro inesperado.", flags: MessageFlags.Ephemeral });
+            } catch (e) {}
+        }
     }
 };
