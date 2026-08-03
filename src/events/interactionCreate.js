@@ -7,6 +7,8 @@ const {
     ModalBuilder, 
     TextInputBuilder, 
     TextInputStyle,
+    StringSelectMenuBuilder,
+    StringSelectMenuOptionBuilder,
     ChannelType,
     PermissionFlagsBits
 } = require("discord.js");
@@ -60,10 +62,12 @@ module.exports = async (interaction) => {
             return await interaction.editReply({ content: "✅ Configuração alterada!" });
         }
 
-        // --- BOTÕES QUE ABREM MODAIS (SEM deferReply) ---
         if (interaction.isButton()) {
             const { customId, user, guild, channel, message } = interaction;
 
+            // =========================================================
+            // 1. BOTÕES QUE ABREM MODAIS (SEM deferReply)
+            // =========================================================
             if (customId === "editar_nome_painel") {
                 const modal = new ModalBuilder().setCustomId("modal_editar_nome_painel").setTitle("Editar Nome");
                 const input = new TextInputBuilder().setCustomId("input_nome_painel").setLabel("Nome do Painel").setStyle(TextInputStyle.Short).setRequired(true);
@@ -92,7 +96,37 @@ module.exports = async (interaction) => {
                 return await interaction.showModal(modal);
             }
 
-            // --- BOTÕES QUE PRECISAM DE deferReply ---
+            // =========================================================
+            // 2. BOTÕES DE EMOJI (CORRIGIDO PARA NÃO TRAVAR)
+            // =========================================================
+            if (customId.startsWith("escolher_emoji_")) {
+                const tipo = customId.replace("escolher_emoji_", "");
+                const emojisDoServidor = guild.emojis.cache.first(25);
+
+                if (!emojisDoServidor.length) {
+                    return await interaction.reply({ content: "⚠️ Este servidor não possui emojis personalizados!", flags: MessageFlags.Ephemeral });
+                }
+
+                // 🔥 CORREÇÃO AQUI: Usando o formato seguro com StringSelectMenuOptionBuilder
+                const selectMenu = new StringSelectMenuBuilder()
+                    .setCustomId(`select_emoji_${tipo}`)
+                    .setPlaceholder("Selecione um emoji do servidor")
+                    .addOptions(
+                        emojisDoServidor.map(e => 
+                            new StringSelectMenuOptionBuilder()
+                                .setLabel(e.name)
+                                .setValue(`<:${e.name}:${e.id}>`)
+                                .setEmoji({ id: e.id, name: e.name }) // Formato que o Discord aceita!
+                        )
+                    );
+
+                const row = new ActionRowBuilder().addComponents(selectMenu);
+                return await interaction.reply({ content: "Escolha o emoji abaixo:", components: [row], flags: MessageFlags.Ephemeral });
+            }
+
+            // =========================================================
+            // 3. BOTÕES DE AÇÃO (PRECISAM DE deferReply)
+            // =========================================================
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
 
             if (customId === "ativar_misto") {
@@ -112,6 +146,7 @@ module.exports = async (interaction) => {
                 return await interaction.editReply({ content: "✅ Salvo!" });
             }
 
+            // --- Lógica das Filas (Entrar/Sair) ---
             if (customId.startsWith("entrar_") || customId === "sair_fila") {
                 const painelId = message.id;
                 let tipoFila = customId.replace("entrar_", "");
@@ -164,29 +199,6 @@ module.exports = async (interaction) => {
                     return await interaction.editReply({ content: `🚪 <@${user.id}>, saiu da fila!` });
                 }
                 return await interaction.editReply({ content: `✅ <@${user.id}>, entrou na fila!` });
-            }
-
-            if (customId === "btn_meu_perfil") {
-                const perfil = ranking.pegarPerfil(user.id);
-                const total = perfil.vitorias + perfil.derrotas;
-                const wr = total > 0 ? ((perfil.vitorias / total) * 100).toFixed(1) : "0.0";
-                const embed = new EmbedBuilder()
-                    .setColor("#5865F2")
-                    .setTitle(`👤 Perfil de ${user.username}`)
-                    .addFields(
-                        { name: "🏆 Vitórias", value: `${perfil.vitorias}`, inline: true },
-                        { name: "❌ Derrotas", value: `${perfil.derrotas}`, inline: true },
-                        { name: "📊 Winrate", value: `${wr}%`, inline: true }
-                    );
-                return await interaction.editReply({ embeds: [embed] });
-            }
-
-            if (customId === "btn_ver_ranking") {
-                const top20 = ranking.pegarTop20();
-                if (top20.length === 0) return await interaction.editReply({ content: "⚠️ Ninguém pontuou ainda!" });
-                const lista = top20.map((j, i) => `**#${i + 1}** <@${j.id}> — **${j.vitorias}** V`).join("\n");
-                const embed = new EmbedBuilder().setColor("#FEE75C").setTitle("🏆 Top 20 Ranking").setDescription(lista);
-                return await interaction.editReply({ embeds: [embed] });
             }
         }
     } catch (err) {
