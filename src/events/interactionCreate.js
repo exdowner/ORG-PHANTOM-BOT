@@ -36,21 +36,16 @@ module.exports = async (interaction) => {
             return;
         }
 
-        // ----------- MODAIS (Editar Nome, Valor, Modo, Quantidade) -----------
+        // ----------- MODAIS (Apenas Nome e Modo agora) -----------
         if (interaction.isModalSubmit()) {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
             const config = pegarConfig();
 
             if (interaction.customId === "modal_editar_nome_painel") {
                 config.nomePainel = interaction.fields.getTextInputValue("input_nome_painel");
-            } else if (interaction.customId === "modal_editar_valor") {
-                config.valor = interaction.fields.getTextInputValue("input_valor");
             } else if (interaction.customId === "modal_editar_modo") {
                 config.modo = interaction.fields.getTextInputValue("input_modo");
                 config.modoMisto = false;
-            } else if (interaction.customId === "modal_editar_quantidade") {
-                const qtd = parseInt(interaction.fields.getTextInputValue("input_quantidade"));
-                if (!isNaN(qtd) && qtd > 0) config.quantidade = qtd;
             }
 
             salvarConfig(config);
@@ -61,13 +56,9 @@ module.exports = async (interaction) => {
                 const embed = EmbedBuilder.from(msgOriginal.embeds[0]);
                 if (interaction.customId === "modal_editar_nome_painel") {
                     embed.spliceFields(0, 1, { name: "**📛 Nome do Painel:**", value: `\`${config.nomePainel || "PHANTOM"}\``, inline: false });
-                } else if (interaction.customId === "modal_editar_valor") {
-                    embed.spliceFields(2, 1, { name: "**💰 Valor:**", value: `\`${config.valor || "20,00"}\``, inline: true });
                 } else if (interaction.customId === "modal_editar_modo") {
                     embed.spliceFields(1, 1, { name: "**🎮 Modo:**", value: `\`${config.modo || "Mobile"}\``, inline: true });
                     embed.spliceFields(4, 1, { name: "**🔀 Misto:**", value: "Desativado", inline: false });
-                } else if (interaction.customId === "modal_editar_quantidade") {
-                    embed.spliceFields(3, 1, { name: "**👥 Quantidade:**", value: `\`${config.quantidade} jogadores\``, inline: true });
                 }
                 await msgOriginal.edit({ embeds: [embed] }).catch(() => {});
             }
@@ -75,20 +66,44 @@ module.exports = async (interaction) => {
             return await interaction.editReply({ content: "✅ Configuração alterada!" });
         }
 
-        // ----------- MENU DE EMOJIS -----------
+        // ----------- MENUS DE SELEÇÃO (Valor, Quantidade e Emojis) -----------
         if (interaction.isStringSelectMenu()) {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
             const config = pegarConfig();
             const valorEscolhido = interaction.values[0];
 
-            if (interaction.customId === "select_emoji_gel_normal") config.emojiGelNormal = valorEscolhido;
-            if (interaction.customId === "select_emoji_gel_inf") config.emojiGelInfinito = valorEscolhido;
-            if (interaction.customId === "select_emoji_emul1") config.emojiEmul1 = valorEscolhido;
-            if (interaction.customId === "select_emoji_emul2") config.emojiEmul2 = valorEscolhido;
-            if (interaction.customId === "select_emoji_sair") config.emojiSair = valorEscolhido;
+            if (interaction.customId === "select_valor") {
+                config.valor = valorEscolhido;
+            } else if (interaction.customId === "select_quantidade") {
+                const qtd = parseInt(valorEscolhido);
+                if (!isNaN(qtd) && qtd > 0) config.quantidade = qtd;
+            } else if (interaction.customId === "select_emoji_gel_normal") {
+                config.emojiGelNormal = valorEscolhido;
+            } else if (interaction.customId === "select_emoji_gel_inf") {
+                config.emojiGelInfinito = valorEscolhido;
+            } else if (interaction.customId === "select_emoji_emul1") {
+                config.emojiEmul1 = valorEscolhido;
+            } else if (interaction.customId === "select_emoji_emul2") {
+                config.emojiEmul2 = valorEscolhido;
+            } else if (interaction.customId === "select_emoji_sair") {
+                config.emojiSair = valorEscolhido;
+            }
 
             salvarConfig(config);
-            return await interaction.editReply({ content: `✅ Emoji atualizado com sucesso!` });
+
+            // Atualiza o preview do /setup ao vivo
+            const msgOriginal = interaction.message;
+            if (msgOriginal && msgOriginal.embeds.length > 0) {
+                const embed = EmbedBuilder.from(msgOriginal.embeds[0]);
+                if (interaction.customId === "select_valor") {
+                    embed.spliceFields(2, 1, { name: "**💰 Valor:**", value: `\`${config.valor || "20,00"}\``, inline: true });
+                } else if (interaction.customId === "select_quantidade") {
+                    embed.spliceFields(3, 1, { name: "**👥 Quantidade:**", value: `\`${config.quantidade} jogadores\``, inline: true });
+                }
+                await msgOriginal.edit({ embeds: [embed] }).catch(() => {});
+            }
+
+            return await interaction.editReply({ content: "✅ Configuração alterada!" });
         }
 
         // ----------- BOTÕES -----------
@@ -103,23 +118,9 @@ module.exports = async (interaction) => {
                 return await interaction.showModal(modal);
             }
 
-            if (customId === "editar_valor") {
-                const modal = new ModalBuilder().setCustomId("modal_editar_valor").setTitle("Editar Valor");
-                const input = new TextInputBuilder().setCustomId("input_valor").setLabel("Novo Valor").setStyle(TextInputStyle.Short).setRequired(true);
-                modal.addComponents(new ActionRowBuilder().addComponents(input));
-                return await interaction.showModal(modal);
-            }
-
             if (customId === "editar_modo") {
                 const modal = new ModalBuilder().setCustomId("modal_editar_modo").setTitle("Editar Modo");
                 const input = new TextInputBuilder().setCustomId("input_modo").setLabel("Novo Modo (Mobile ou Emulador)").setStyle(TextInputStyle.Short).setRequired(true);
-                modal.addComponents(new ActionRowBuilder().addComponents(input));
-                return await interaction.showModal(modal);
-            }
-
-            if (customId === "editar_quantidade") {
-                const modal = new ModalBuilder().setCustomId("modal_editar_quantidade").setTitle("Editar Quantidade");
-                const input = new TextInputBuilder().setCustomId("input_quantidade").setLabel("Nova Quantidade").setStyle(TextInputStyle.Short).setRequired(true);
                 modal.addComponents(new ActionRowBuilder().addComponents(input));
                 return await interaction.showModal(modal);
             }
@@ -191,7 +192,7 @@ module.exports = async (interaction) => {
                 return await interaction.editReply({ embeds: [embed] });
             }
 
-            // =========== CRIAÇÃO E FECHAMENTO DE TICKETS (CORRIGIDO!) ===========
+            // =========== CRIAÇÃO E FECHAMENTO DE TICKETS ===========
             if (customId === "abrir_ticket") {
                 // Verifica se o usuário já possui um ticket aberto
                 const ticketsExistentes = guild.channels.cache.filter(c => 
@@ -253,18 +254,14 @@ module.exports = async (interaction) => {
 
             // Botão para FECHAR o ticket
             if (customId === "fechar_ticket") {
-                // Só quem está no canal pode fechar (ou admins)
                 const canal = interaction.channel;
                 
-                // Verifica se o canal é um ticket
                 if (!canal.name.startsWith("ticket-")) {
                     return await interaction.editReply({ content: "❌ Este comando só pode ser usado em um ticket." });
                 }
 
                 try {
-                    // Deleta o canal
                     await canal.delete();
-                    // Responde ao usuário (a resposta é enviada antes do canal sumir)
                     await interaction.editReply({ content: "✅ Ticket fechado com sucesso!" });
                 } catch (err) {
                     console.error("Erro ao fechar ticket:", err);

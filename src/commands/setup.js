@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags, PermissionFlagsBits } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, MessageFlags, PermissionFlagsBits } = require("discord.js");
 const { pegarConfig } = require("../systems/config.js");
 
 module.exports = {
@@ -26,33 +26,61 @@ module.exports = {
             )
             .setFooter({ text: "Só você pode ver esta mensagem • Ignorar mensagem" });
 
+        // LINHA 1: Botões de ação (Nome, Modo, Misto, Salvar)
         const row1 = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId("editar_nome_painel").setLabel("📛 Nome").setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder().setCustomId("editar_valor").setLabel("💰 Valor").setStyle(ButtonStyle.Primary),
             new ButtonBuilder().setCustomId("editar_modo").setLabel("🎮 Modo").setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder().setCustomId("editar_quantidade").setLabel("👥 Qtd").setStyle(ButtonStyle.Secondary)
+            new ButtonBuilder().setCustomId("ativar_misto").setLabel("🔀 Misto On/Off").setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId("salvar_config").setLabel("💾 Salvar").setStyle(ButtonStyle.Success)
         );
 
+        // LINHA 2: Seletor de Valor
         const row2 = new ActionRowBuilder().addComponents(
+            new StringSelectMenuBuilder()
+                .setCustomId("select_valor")
+                .setPlaceholder("Selecione o Valor do Painel")
+                .addOptions(
+                    new StringSelectMenuOptionBuilder().setLabel("R$ 100,00").setValue("100,00"),
+                    new StringSelectMenuOptionBuilder().setLabel("R$ 50,00").setValue("50,00"),
+                    new StringSelectMenuOptionBuilder().setLabel("R$ 20,00").setValue("20,00"),
+                    new StringSelectMenuOptionBuilder().setLabel("R$ 10,00").setValue("10,00"),
+                    new StringSelectMenuOptionBuilder().setLabel("R$ 5,00").setValue("5,00"),
+                    new StringSelectMenuOptionBuilder().setLabel("R$ 3,00").setValue("3,00"),
+                    new StringSelectMenuOptionBuilder().setLabel("R$ 2,00").setValue("2,00"),
+                    new StringSelectMenuOptionBuilder().setLabel("R$ 1,00").setValue("1,00"),
+                    new StringSelectMenuOptionBuilder().setLabel("R$ 0,50").setValue("0,50")
+                )
+        );
+
+        // LINHA 3: Seletor de Quantidade
+        const row3 = new ActionRowBuilder().addComponents(
+            new StringSelectMenuBuilder()
+                .setCustomId("select_quantidade")
+                .setPlaceholder("Selecione o Tamanho da Fila")
+                .addOptions(
+                    new StringSelectMenuOptionBuilder().setLabel("1x1").setValue("1"),
+                    new StringSelectMenuOptionBuilder().setLabel("2x2").setValue("2"),
+                    new StringSelectMenuOptionBuilder().setLabel("3x3").setValue("3"),
+                    new StringSelectMenuOptionBuilder().setLabel("4x4").setValue("4")
+                )
+        );
+
+        // LINHA 4: Botões de Emojis (Gel)
+        const row4 = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId("escolher_emoji_gel_normal").setLabel("🧊 Gel Normal").setStyle(ButtonStyle.Success),
             new ButtonBuilder().setCustomId("escolher_emoji_gel_inf").setLabel("♾️ Gel Inf").setStyle(ButtonStyle.Success)
         );
 
-        const row3 = new ActionRowBuilder().addComponents(
+        // LINHA 5: Botões de Emojis (Emuladores e Sair)
+        const row5 = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId("escolher_emoji_emul1").setLabel("📱 Emul 1").setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId("escolher_emoji_emul2").setLabel("💻 Emul 2").setStyle(ButtonStyle.Success)
-        );
-
-        // 🔥 REMOVI O EMOJI VERDE DO BOTÃO E DEIXEI ELE SÓ O TEXTO
-        const row4 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId("escolher_emoji_sair").setLabel("🚪 Sair").setStyle(ButtonStyle.Danger),
-            new ButtonBuilder().setCustomId("ativar_misto").setLabel("Ativar Misto").setStyle(ButtonStyle.Success), // 🟢 VERDE (sem emoji na frente)
-            new ButtonBuilder().setCustomId("salvar_config").setLabel("💾 Salvar").setStyle(ButtonStyle.Success)
+            new ButtonBuilder().setCustomId("escolher_emoji_emul2").setLabel("💻 Emul 2").setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId("escolher_emoji_sair").setLabel("🚪 Sair").setStyle(ButtonStyle.Danger)
         );
 
         return await interaction.editReply({ 
             embeds: [embed], 
-            components: [row1, row2, row3, row4] 
+            components: [row1, row2, row3, row4, row5] 
         });
     }
 };
