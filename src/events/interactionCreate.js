@@ -61,11 +61,11 @@ module.exports = async (interaction) => {
         }
 
         if (interaction.isButton()) {
-            // 🔥 LINHA MÁGICA AQUI! Isso impede o bot de travar!
-            await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
-
             const { customId, user, guild, channel, message } = interaction;
 
+            // =========================================================
+            // BOTÕES QUE ABREM MODAIS (NÃO PODE TER deferReply AQUI!)
+            // =========================================================
             if (customId === "editar_nome_painel") {
                 const modal = new ModalBuilder().setCustomId("modal_editar_nome_painel").setTitle("Editar Nome");
                 const input = new TextInputBuilder().setCustomId("input_nome_painel").setLabel("Nome do Painel").setStyle(TextInputStyle.Short).setRequired(true);
@@ -93,6 +93,11 @@ module.exports = async (interaction) => {
                 modal.addComponents(new ActionRowBuilder().addComponents(input));
                 return await interaction.showModal(modal);
             }
+
+            // =========================================================
+            // BOTÕES QUE PRECISAM DE deferReply (Salvar, Misto, Filas)
+            // =========================================================
+            await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
 
             if (customId === "ativar_misto") {
                 const config = pegarConfig();
