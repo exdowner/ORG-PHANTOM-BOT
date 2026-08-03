@@ -64,7 +64,7 @@ module.exports = async (interaction) => {
             const { customId, user, guild, channel, message } = interaction;
 
             // =========================================================
-            // BOTÕES QUE ABREM MODAIS (NÃO PODE TER deferReply AQUI!)
+            // BOTÕES QUE ABREM MODAIS
             // =========================================================
             if (customId === "editar_nome_painel") {
                 const modal = new ModalBuilder().setCustomId("modal_editar_nome_painel").setTitle("Editar Nome");
@@ -95,7 +95,7 @@ module.exports = async (interaction) => {
             }
 
             // =========================================================
-            // BOTÕES QUE PRECISAM DE deferReply (Salvar, Misto, Filas)
+            // BOTÕES COM RESPOSTA ADIADA (deferReply)
             // =========================================================
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
 
@@ -119,14 +119,17 @@ module.exports = async (interaction) => {
             // --- Lógica das Filas (Entrar/Sair) ---
             if (customId.startsWith("entrar_") || customId === "sair_fila") {
                 const painelId = message.id;
+                const configReal = pegarConfig();
+                
                 let tipoFila = customId.replace("entrar_", "");
                 
-                const isEmulador = tipoFila.includes("emulador") || tipoFila.includes("emuladores");
-
+                // Mapeamento correto do nome da fila
                 let nomeFila = tipoFila;
-                if (tipoFila === "gel_normal") nomeFila = "normal";
-                else if (tipoFila === "gel_inf") nomeFila = "infinito";
-                
+                if (tipoFila === "gel_normal" || tipoFila === "normal") nomeFila = "normal";
+                else if (tipoFila === "gel_inf" || tipoFila === "infinito") nomeFila = "infinito";
+                else if (tipoFila.includes("1emul")) nomeFila = "1emulador";
+                else if (tipoFila.includes("2emul")) nomeFila = "2emuladores";
+
                 if (typeof filas.sairFila !== 'function' || typeof filas.entrarFila !== 'function') {
                     return await interaction.editReply({ content: "❌ Erro: Arquivo de filas não configurado corretamente." });
                 }
@@ -135,30 +138,26 @@ module.exports = async (interaction) => {
                     filas.sairFila(painelId, user);
                 } else {
                     const resultado = filas.entrarFila(painelId, nomeFila, user);
-                    if (!resultado.ok) return await interaction.editReply({ content: resultado.motivo });
+                    if (!resultado.ok) return await interaction.editReply({ content: resultado.motivo || "Não foi possível entrar na fila." });
                 }
 
-                const lista1 = filas.jogadores(isEmulador ? "1emulador" : "normal", painelId);
-                const lista2 = filas.jogadores(isEmulador ? "2emuladores" : "infinito", painelId);
-                
-                const configReal = pegarConfig();
+                // Busca as listas correspondentes dependendo se o painel está no modo misto/emulador
+                const isMisto = !!configReal.modoMisto;
+                const lista1 = filas.jogadores(isMisto ? "1emulador" : "normal", painelId) || [];
+                const lista2 = filas.jogadores(isMisto ? "2emuladores" : "infinito", painelId) || [];
 
-                const configMock = {
-                    modoMisto: isEmulador,
+                const configFinal = {
+                    ...configReal,
+                    modoMisto: isMisto,
                     modo: configReal.modo || "Mobile",
                     valor: configReal.valor || "20,00",
                     nomePainel: configReal.nomePainel || "PHANTOM",
-                    emojiGelNormal: configReal.emojiGelNormal,
-                    emojiGelInfinito: configReal.emojiGelInfinito,
-                    emojiEmul1: configReal.emojiEmul1,
-                    emojiEmul2: configReal.emojiEmul2,
-                    emojiSair: configReal.emojiSair,
                     quantidade: configReal.quantidade || 2
                 };
 
                 try {
                     if (typeof painelBuilder === "function") {
-                        const novoPainel = painelBuilder(configMock, lista1, lista2);
+                        const novoPainel = painelBuilder(configFinal, lista1, lista2);
                         await message.edit(novoPainel).catch(() => {});
                     }
                 } catch (err) {
@@ -166,9 +165,9 @@ module.exports = async (interaction) => {
                 }
 
                 if (customId === "sair_fila") {
-                    return await interaction.editReply({ content: `🚪 <@${user.id}>, saiu da fila!` });
+                    return await interaction.editReply({ content: `🚪 <@${user.id}>, você saiu da fila!` });
                 }
-                return await interaction.editReply({ content: `✅ <@${user.id}>, entrou na fila!` });
+                return await interaction.editReply({ content: `✅ <@${user.id}>, você entrou na fila!` });
             }
         }
     } catch (err) {
