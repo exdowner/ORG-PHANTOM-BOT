@@ -10,6 +10,18 @@ module.exports = (config, filaNormal, filaInfinito, confirmados = []) => {
         return f.map(j => `<@${j.id}>`).join("\n");
     };
 
+    // Função para tratar emojis do servidor (<:nome:id>) vs Emojis nativos (🧊, 💻)
+    const tratarEmoji = (emojiStr, emojiPadrao) => {
+        if (!emojiStr || emojiStr === "Nenhum") return emojiPadrao;
+        
+        // Se for um emoji customizado do Discord (<:nome:id> ou <a:nome:id>)
+        const match = emojiStr.match(/<a?:(\w+):(\d+)>/);
+        if (match) {
+            return { id: match[2], name: match[1] };
+        }
+        return emojiStr; // Retorna o emoji nativo
+    };
+
     const embed = new EmbedBuilder()
         .setColor("#2b2d31")
         .setTitle(titulo)
@@ -24,13 +36,13 @@ module.exports = (config, filaNormal, filaInfinito, confirmados = []) => {
     if (isMisto || isEmulador) {
         nomeFila1 = "1 Emulador";
         nomeFila2 = "2 Emuladores";
-        emoji1 = config.emojiEmulador || "📱";
-        emoji2 = config.emojiEmulador || "💻";
+        emoji1 = tratarEmoji(config.emojiGel, "📱");
+        emoji2 = tratarEmoji(config.emojiEmulador, "💻");
     } else {
         nomeFila1 = "Gel Normal";
         nomeFila2 = "Gel Infinito";
-        emoji1 = config.emojiGel || "🧊";
-        emoji2 = config.emojiGel || "♾️";
+        emoji1 = tratarEmoji(config.emojiGel, "🧊");
+        emoji2 = tratarEmoji(config.emojiEmulador, "♾️");
     }
 
     embed.addFields(
@@ -38,23 +50,26 @@ module.exports = (config, filaNormal, filaInfinito, confirmados = []) => {
         { name: `${nomeFila2} (${filaInfinito.length}/${qtd})`, value: formatar(filaInfinito), inline: false }
     );
 
-    const row = new ActionRowBuilder()
-        .addComponents(
-            new ButtonBuilder()
-                .setCustomId("entrar_fila1")
-                .setLabel(nomeFila1)
-                .setEmoji(emoji1)
-                .setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder()
-                .setCustomId("entrar_fila2")
-                .setLabel(nomeFila2)
-                .setEmoji(emoji2)
-                .setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder()
-                .setCustomId("sair_fila")
-                .setLabel("Sair")
-                .setStyle(ButtonStyle.Danger)
-        );
+    const btnFila1 = new ButtonBuilder()
+        .setCustomId("entrar_fila1")
+        .setLabel(nomeFila1)
+        .setStyle(ButtonStyle.Secondary);
+
+    if (emoji1) btnFila1.setEmoji(emoji1);
+
+    const btnFila2 = new ButtonBuilder()
+        .setCustomId("entrar_fila2")
+        .setLabel(nomeFila2)
+        .setStyle(ButtonStyle.Secondary);
+
+    if (emoji2) btnFila2.setEmoji(emoji2);
+
+    const btnSair = new ButtonBuilder()
+        .setCustomId("sair_fila")
+        .setLabel("Sair")
+        .setStyle(ButtonStyle.Danger);
+
+    const row = new ActionRowBuilder().addComponents(btnFila1, btnFila2, btnSair);
 
     const totalJogadores = filaNormal.length + filaInfinito.length;
     const confirmadosCount = confirmados.length;

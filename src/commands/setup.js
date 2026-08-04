@@ -54,21 +54,7 @@ module.exports = {
                 )
         );
 
-        // LINHA 3: Quantidade
-        const row3 = new ActionRowBuilder().addComponents(
-            new StringSelectMenuBuilder()
-                .setCustomId("select_quantidade")
-                .setPlaceholder("Tamanho da fila")
-                .addOptions(
-                    new StringSelectMenuOptionBuilder().setLabel("1x1 (2 jogadores)").setValue("1"),
-                    new StringSelectMenuOptionBuilder().setLabel("2x2 (4 jogadores)").setValue("2"),
-                    new StringSelectMenuOptionBuilder().setLabel("3x3 (6 jogadores)").setValue("3"),
-                    new StringSelectMenuOptionBuilder().setLabel("4x4 (8 jogadores)").setValue("4")
-                )
-        );
-
-        // LINHA 4: Emoji Gel e Emoji Emulador
-        // Pega os primeiros 25 emojis do servidor para cada menu
+        // LINHA 3: Quantidade + Emoji Gel (Opções de Emojis)
         const emojis = interaction.guild.emojis.cache.first(25).map(e =>
             new StringSelectMenuOptionBuilder()
                 .setLabel(e.name)
@@ -76,15 +62,26 @@ module.exports = {
                 .setEmoji({ id: e.id, name: e.name })
         );
 
-        const row4 = new ActionRowBuilder().addComponents(
+        const optionsEmojis = emojis.length > 0 ? emojis : [new StringSelectMenuOptionBuilder().setLabel("Nenhum emoji").setValue("none")];
+
+        const row3 = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("select_emoji_gel")
-                .setPlaceholder(emojis.length > 0 ? "Emoji Gel" : "Nenhum emoji no servidor")
+                .setPlaceholder(emojis.length > 0 ? "Emoji Gel" : "Sem emojis no servidor")
                 .setDisabled(emojis.length === 0)
-                .addOptions(emojis.length > 0 ? emojis : [new StringSelectMenuOptionBuilder().setLabel("Nenhum").setValue("none")])
+                .addOptions(optionsEmojis)
         );
 
-        // LINHA 5: Botão "Enviar Painéis" sozinho em sua própria linha
+        // LINHA 4: Emoji Emulador
+        const row4 = new ActionRowBuilder().addComponents(
+            new StringSelectMenuBuilder()
+                .setCustomId("select_emoji_emulador")
+                .setPlaceholder(emojis.length > 0 ? "Emoji Emulador" : "Sem emojis no servidor")
+                .setDisabled(emojis.length === 0)
+                .addOptions(optionsEmojis)
+        );
+
+        // LINHA 5: Botão Enviar
         const row5 = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
                 .setCustomId("enviar_paineis")
