@@ -24,7 +24,18 @@ module.exports = async (interaction) => {
             return;
         }
 
-        // --- MENUS ---
+        // --- MENU VENCEDOR (Tratado primeiro para não conflitar) ---
+        if (interaction.isStringSelectMenu() && interaction.customId.startsWith('select_vencedor_')) {
+            if (!interaction.deferred && !interaction.replied) {
+                await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+            }
+            const painelId = interaction.customId.replace('select_vencedor_', '');
+            const vencedor = interaction.values[0];
+            await interaction.editReply({ content: `🏆 Vencedor registrado: **${vencedor === 'normal' ? 'Time Normal' : 'Time Infinito'}**` });
+            return;
+        }
+
+        // --- MENUS DE CONFIGURAÇÃO DO SETUP ---
         if (interaction.isStringSelectMenu()) {
             if (!interaction.deferred && !interaction.replied) {
                 await interaction.deferReply({ flags: MessageFlags.Ephemeral });
@@ -76,7 +87,7 @@ module.exports = async (interaction) => {
 
         // --- BOTÕES ---
         if (interaction.isButton()) {
-            const { customId, user, guild, message, channel } = interaction;
+            const { customId, user, guild, message } = interaction;
 
             // --- BOTÃO "ENVIAR PAINÉIS" ---
             if (customId === "enviar_paineis") {
@@ -108,7 +119,7 @@ module.exports = async (interaction) => {
                 return;
             }
 
-            // --- BOTÕES DO PAINEL DE FILAS (Entrar, Sair, Confirmar) ---
+            // --- BOTÕES DO PAINEL DE FILAS (Entrar, Sair) ---
             if (customId === "entrar_fila1" || customId === "entrar_fila2" || customId === "sair_fila") {
                 if (!interaction.deferred && !interaction.replied) {
                     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
@@ -126,11 +137,8 @@ module.exports = async (interaction) => {
                 }
 
                 let tipoFila = null;
-                if (customId === "entrar_fila1") {
-                    tipoFila = "normal";
-                } else if (customId === "entrar_fila2") {
-                    tipoFila = "infinito";
-                }
+                if (customId === "entrar_fila1") tipoFila = "normal";
+                if (customId === "entrar_fila2") tipoFila = "infinito";
 
                 if (customId === "sair_fila") {
                     filas.sairFila(painelId, user);
@@ -197,7 +205,6 @@ module.exports = async (interaction) => {
                 }
 
                 if (novosConfirmados.length >= qtd) {
-                    // Criar canal
                     try {
                         const nomeCanal = `partida-${Date.now()}`;
                         const canalPartida = await guild.channels.create({
@@ -241,9 +248,8 @@ module.exports = async (interaction) => {
                         });
 
                         await canalPartida.send({
-                            content: "🛠️ **Painel de Controle**",
-                            components: [controlRow, controlRow2],
-                            ephemeral: true
+                            content: "🛠️ **Painel de Controle do Mediador**",
+                            components: [controlRow, controlRow2]
                         });
 
                         await interaction.editReply({ content: `✅ Partida confirmada! Canal criado: <#${canalPartida.id}>` });
@@ -262,7 +268,7 @@ module.exports = async (interaction) => {
             if (customId.startsWith("mediador_")) {
                 const painelId = interaction.channel.topic || null;
                 if (!painelId) {
-                    await interaction.reply({ content: "❌ Painel não encontrado.", flags: MessageFlags.Ephemeral });
+                    await interaction.reply({ content: "❌ Painel não encontrado no tópico do canal.", flags: MessageFlags.Ephemeral });
                     return;
                 }
 
@@ -299,8 +305,6 @@ module.exports = async (interaction) => {
                 }
 
                 if (customId === "mediador_vencedor") {
-                    const listaNormal = filas.jogadores("normal", painelId);
-                    const listaInfinito = filas.jogadores("infinito", painelId);
                     const select = new StringSelectMenuBuilder()
                         .setCustomId(`select_vencedor_${painelId}`)
                         .setPlaceholder("Vencedor")
@@ -308,14 +312,14 @@ module.exports = async (interaction) => {
                             new StringSelectMenuOptionBuilder().setLabel("Time Normal").setValue("normal"),
                             new StringSelectMenuOptionBuilder().setLabel("Time Infinito").setValue("infinito")
                         );
-                    await interaction.reply({ content: "Escolha o time:", components: [new ActionRowBuilder().addComponents(select)], flags: MessageFlags.Ephemeral });
+                    await interaction.reply({ content: "Escolha o time vencedor:", components: [new ActionRowBuilder().addComponents(select)], flags: MessageFlags.Ephemeral });
                     return;
                 }
 
                 if (customId === "mediador_finalizar") {
                     await filas.limparFilas(painelId);
                     filas.setMatchStatus(painelId, "finalizada");
-                    await interaction.reply({ content: "🏁 Finalizada.", flags: MessageFlags.Ephemeral });
+                    await interaction.reply({ content: "🏁 Partida finalizada! Apagando o canal em breve...", flags: MessageFlags.Ephemeral });
                     setTimeout(async () => {
                         try { await interaction.channel.delete(); } catch (err) { console.error(err); }
                     }, 3000);
@@ -343,7 +347,6 @@ module.exports = async (interaction) => {
             const customId = interaction.customId;
             const parts = customId.split('_');
             const modalType = parts[1];
-            const painelId = parts.slice(2).join('_');
 
             if (modalType === 'senha') {
                 const senha = interaction.fields.getTextInputValue('input_senha');
@@ -355,17 +358,6 @@ module.exports = async (interaction) => {
                 const chave = interaction.fields.getTextInputValue('input_chave');
                 await interaction.editReply({ content: `💰 Chave PIX: \`${chave}\`` });
             }
-            return;
-        }
-
-        // --- MENU VENCEDOR ---
-        if (interaction.isStringSelectMenu() && interaction.customId.startsWith('select_vencedor_')) {
-            if (!interaction.deferred && !interaction.replied) {
-                await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-            }
-            const painelId = interaction.customId.replace('select_vencedor_', '');
-            const vencedor = interaction.values[0];
-            await interaction.editReply({ content: `🏆 Vencedor: **${vencedor === 'normal' ? 'Time Normal' : 'Time Infinito'}**` });
             return;
         }
 

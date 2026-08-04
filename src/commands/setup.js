@@ -24,7 +24,7 @@ module.exports = {
             )
             .setFooter({ text: "Só você pode ver esta mensagem • Ignorar mensagem" });
 
-        // LINHA 1: Modo (sozinho)
+        // LINHA 1: Modo
         const row1 = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("select_modo")
@@ -36,7 +36,7 @@ module.exports = {
                 )
         );
 
-        // LINHA 2: Valor (sozinho)
+        // LINHA 2: Valor
         const row2 = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("select_valor")
@@ -54,7 +54,7 @@ module.exports = {
                 )
         );
 
-        // LINHA 3: Quantidade (sozinho)
+        // LINHA 3: Quantidade
         const row3 = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("select_quantidade")
@@ -67,34 +67,25 @@ module.exports = {
                 )
         );
 
-        // LINHA 4: Emoji Gel (sozinho)
+        // LINHA 4: Emoji Gel e Emoji Emulador
+        // Pega os primeiros 25 emojis do servidor para cada menu
+        const emojis = interaction.guild.emojis.cache.first(25).map(e =>
+            new StringSelectMenuOptionBuilder()
+                .setLabel(e.name)
+                .setValue(`<:${e.name}:${e.id}>`)
+                .setEmoji({ id: e.id, name: e.name })
+        );
+
         const row4 = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("select_emoji_gel")
-                .setPlaceholder("Emoji Gel")
-                .addOptions(
-                    interaction.guild.emojis.cache.first(25).map(e =>
-                        new StringSelectMenuOptionBuilder()
-                            .setLabel(e.name)
-                            .setValue(`<:${e.name}:${e.id}>`)
-                            .setEmoji({ id: e.id, name: e.name })
-                    )
-                )
+                .setPlaceholder(emojis.length > 0 ? "Emoji Gel" : "Nenhum emoji no servidor")
+                .setDisabled(emojis.length === 0)
+                .addOptions(emojis.length > 0 ? emojis : [new StringSelectMenuOptionBuilder().setLabel("Nenhum").setValue("none")])
         );
 
-        // LINHA 5: Emoji Emulador + Botão Enviar (menu + botão, seguro)
+        // LINHA 5: Botão "Enviar Painéis" sozinho em sua própria linha
         const row5 = new ActionRowBuilder().addComponents(
-            new StringSelectMenuBuilder()
-                .setCustomId("select_emoji_emulador")
-                .setPlaceholder("Emoji Emulador")
-                .addOptions(
-                    interaction.guild.emojis.cache.first(25).map(e =>
-                        new StringSelectMenuOptionBuilder()
-                            .setLabel(e.name)
-                            .setValue(`<:${e.name}:${e.id}>`)
-                            .setEmoji({ id: e.id, name: e.name })
-                    )
-                ),
             new ButtonBuilder()
                 .setCustomId("enviar_paineis")
                 .setLabel("🚀 Enviar Painéis")
