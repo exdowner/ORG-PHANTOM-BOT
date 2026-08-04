@@ -5,7 +5,7 @@ const configModule = require("../systems/config.js");
 const pegarConfig = configModule.pegarConfig || (() => ({}));
 const salvarConfig = configModule.salvarConfig || (() => ({}));
 
-// Armazena temporariamente qual emoji o usuário escolheu editar no setup (por ID do usuário)
+// Armazena temporariamente qual campo de emoji o usuário escolheu editar
 let editTarget = {}; 
 
 module.exports = async (interaction) => {
@@ -50,22 +50,30 @@ module.exports = async (interaction) => {
                     config.valor = interaction.values[0];
                 } else if (interaction.customId === "select_emoji_universal") {
                     const target = editTarget[interaction.user.id];
-                    if (target && interaction.values[0] !== "none") {
-                        config[target] = interaction.values[0];
+                    const valorSelecionado = interaction.values[0];
+
+                    if (target && valorSelecionado !== "none") {
+                        // Formata o emoji para o padrão Discord (<:nome:id>) de forma independente
+                        const [nome, id] = valorSelecionado.split(":");
+                        config[target] = `<:${nome}:${id}>`;
                     }
                 }
 
                 // Salva permanentemente a configuração
                 salvarConfig(config);
 
-                // Atualiza a embed de preview com o visual limpo
+                // Atualiza a embed de preview no painel de setup
                 const msgOriginal = interaction.message;
                 if (msgOriginal && msgOriginal.embeds.length > 0) {
+                    const targetNome = editTarget[interaction.user.id] 
+                        ? ` (Editado: **${editTarget[interaction.user.id]}**)` 
+                        : "";
+
                     const newEmbed = EmbedBuilder.from(msgOriginal.embeds[0])
                         .setFields(
                             { name: "🎮 Modo", value: `\`${config.modo || "Mobile"}\``, inline: true },
                             { name: "💰 Valor", value: `\`R$ ${config.valor || "5,00"}\``, inline: true },
-                            { name: "👥 Tamanho", value: `\`${(config.quantidade || 1) * 2} Players (${config.quantidade || 1}x${config.quantidade || 1})\``, inline: true },
+                            { name: "👥 Tamanho", value: `\`${(config.quantidade || 1) * 2} Players\``, inline: true },
                             { name: "🧊 Gel Normal", value: config.emojiGelNormal || "🧊", inline: true },
                             { name: "♾️ Gel Infinito", value: config.emojiGelInfinito || "♾️", inline: true },
                             { name: "📱 1 Emulador", value: config.emojiEmu1 || "📱", inline: true },
@@ -73,7 +81,7 @@ module.exports = async (interaction) => {
                         );
 
                     await interaction.editReply({ 
-                        content: "✅ Configuração atualizada com sucesso!",
+                        content: `✅ Configuração atualizada com sucesso!${targetNome}`,
                         embeds: [newEmbed] 
                     });
                 }
@@ -81,11 +89,11 @@ module.exports = async (interaction) => {
             }
         }
 
-        // --- BOTÕES ---
+        // --- BOTÕES DO SETUP E PAINÉIS ---
         if (interaction.isButton()) {
             const { customId, user, guild, message } = interaction;
 
-            // --- SELECIONAR QUAL EMOJI EDITAR ---
+            // --- SELECIONAR CAMPO DE EMOJI PARA EDITAR ---
             if (customId.startsWith("edit_")) {
                 await interaction.deferUpdate();
 
@@ -106,7 +114,7 @@ module.exports = async (interaction) => {
                 editTarget[user.id] = targets[customId];
 
                 await interaction.followUp({ 
-                    content: `👉 Agora selecione no menu abaixo qual emoji quer usar para: **${nomesFormatados[customId]}**`, 
+                    content: `👉 Seleção ativa para **${nomesFormatados[customId]}**. Escolha o emoji desejado no menu **"Selecionar Emoji"**.`, 
                     flags: MessageFlags.Ephemeral 
                 });
                 return;
@@ -121,7 +129,7 @@ module.exports = async (interaction) => {
                     const msg = await interaction.channel.send({ embeds: painel.embeds, components: painel.components });
                     filas.setConfig(msg.id, snapshot);
                     await interaction.reply({ 
-                        content: `✅ Painel único (**${snapshot.modo || "Mobile"}** - R$ ${snapshot.valor || "5,00"}) enviado!`, 
+                        content: `✅ Painel único enviado (**${snapshot.modo || "Mobile"}** - R$ ${snapshot.valor || "5,00"})!`, 
                         flags: MessageFlags.Ephemeral 
                     });
                 } catch (err) {
@@ -152,7 +160,7 @@ module.exports = async (interaction) => {
                     await new Promise(r => setTimeout(r, 800));
                 }
 
-                await interaction.editReply({ content: `✅ Pack concluído! ${enviados}/9 painéis foram criados com sucesso.` });
+                await interaction.editReply({ content: `✅ Pack concluído! ${enviados}/9 painéis enviados com sucesso.` });
                 return;
             }
 
@@ -165,7 +173,7 @@ module.exports = async (interaction) => {
                 const painelId = message.id;
                 let configReal = filas.getConfig(painelId);
 
-                // Fallback de segurança se o bot for reiniciado
+                // Fallback de segurança caso o bot reinicie
                 if (!configReal) {
                     const titulo = message.embeds[0]?.title || "";
                     const partes = titulo.split("|");
