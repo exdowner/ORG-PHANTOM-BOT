@@ -13,12 +13,8 @@ function carregarConfig() {
         console.error("Erro ao carregar config:", err);
     }
     return {
-        modo: "Mobile",
         valor: "5,00",
-        quantidade: 1,
-        emojiGel: null,
-        emojiEmulador: null,
-        cargosPermitidos: []
+        quantidade: 1
     };
 }
 

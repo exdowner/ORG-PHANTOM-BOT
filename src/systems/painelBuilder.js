@@ -1,8 +1,9 @@
+
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 
 module.exports = (config, filaNormal, filaInfinito, confirmados = []) => {
     const qtd = (config.quantidade || 1) * 2;
-    const titulo = `${config.modo || "Mobile"} | ${config.valor || "5,00"}`;
+    const titulo = `Mobile | ${config.valor || "5,00"}`;
     const urlImagem = "https://media.discordapp.net/attachments/1523200272158036008/1531973873116123276/Design_sem_nome.png";
 
     const formatar = (f) => {
@@ -14,45 +15,23 @@ module.exports = (config, filaNormal, filaInfinito, confirmados = []) => {
         .setColor("#2b2d31")
         .setTitle(titulo)
         .setThumbnail(urlImagem)
-        .setFooter({ text: "ORG PHANTOM | Sistema de Partidas" });
-
-    const modoLower = (config.modo || "mobile").toLowerCase();
-    const isMisto = modoLower === "misto";
-    const isEmulador = modoLower === "emulador";
-
-    let nomeFila1, nomeFila2, emoji1, emoji2;
-    if (isMisto || isEmulador) {
-        nomeFila1 = "1 Emulador";
-        nomeFila2 = "2 Emuladores";
-        emoji1 = config.emojiEmulador || "📱";
-        emoji2 = config.emojiEmulador || "💻";
-    } else {
-        nomeFila1 = "Gel Normal";
-        nomeFila2 = "Gel Infinito";
-        emoji1 = config.emojiGel || "🧊";
-        emoji2 = config.emojiGel || "♾️";
-    }
-
-    embed.addFields(
-        { name: `${nomeFila1} (${filaNormal.length}/${qtd})`, value: formatar(filaNormal), inline: false },
-        { name: `${nomeFila2} (${filaInfinito.length}/${qtd})`, value: formatar(filaInfinito), inline: false }
-    );
+        .setFooter({ text: "ORG PHANTOM | Sistema de Partidas" })
+        .addFields(
+            { name: `🧊 Gel Normal (${filaNormal.length}/${qtd})`, value: formatar(filaNormal), inline: false },
+            { name: `♾️ Gel Infinito (${filaInfinito.length}/${qtd})`, value: formatar(filaInfinito), inline: false }
+        );
 
     const row = new ActionRowBuilder()
         .addComponents(
             new ButtonBuilder()
                 .setCustomId("entrar_fila1")
-                .setLabel(nomeFila1)
-                .setEmoji(emoji1)
-                .setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder()
-                .setCustomId("entrar_fila2")
-                .setLabel(nomeFila2)
-                .setEmoji(emoji2)
+                .setLabel("Entrar")
+                .setEmoji("🧊")
                 .setStyle(ButtonStyle.Secondary),
             new ButtonBuilder()
                 .setCustomId("sair_fila")
                 .setLabel("Sair")
+                .setEmoji("🚪")
                 .setStyle(ButtonStyle.Danger)
         );
 

@@ -24,7 +24,7 @@ module.exports = async (interaction) => {
             return;
         }
 
-        // --- MENUS ---
+        // --- MENUS (Valor e Quantidade) ---
         if (interaction.isStringSelectMenu()) {
             if (!interaction.deferred && !interaction.replied) {
                 await interaction.deferReply({ flags: MessageFlags.Ephemeral });
@@ -33,10 +33,7 @@ module.exports = async (interaction) => {
             const config = pegarConfig();
             const valor = interaction.values[0];
 
-            if (interaction.customId === "select_modo") {
-                config.modo = valor;
-                salvarConfig(config);
-            } else if (interaction.customId === "select_valor") {
+            if (interaction.customId === "select_valor") {
                 config.valor = valor;
                 salvarConfig(config);
             } else if (interaction.customId === "select_quantidade") {
@@ -45,23 +42,14 @@ module.exports = async (interaction) => {
                     config.quantidade = qtd;
                     salvarConfig(config);
                 }
-            } else if (interaction.customId === "select_emoji_gel") {
-                config.emojiGel = valor;
-                salvarConfig(config);
-            } else if (interaction.customId === "select_emoji_emulador") {
-                config.emojiEmulador = valor;
-                salvarConfig(config);
             }
 
             const msgOriginal = interaction.message;
             if (msgOriginal && msgOriginal.embeds.length > 0) {
                 const embed = msgOriginal.embeds[0];
                 const newEmbed = embed.setFields(
-                    { name: "🎮 Modo:", value: config.modo || "Mobile", inline: true },
                     { name: "💰 Valor:", value: `\`${config.valor || "5,00"}\``, inline: true },
-                    { name: "👥 Tamanho:", value: `\`${config.quantidade}x${config.quantidade}\``, inline: true },
-                    { name: "😊 Emoji Gel:", value: config.emojiGel || "Nenhum", inline: true },
-                    { name: "😊 Emoji Emulador:", value: config.emojiEmulador || "Nenhum", inline: true }
+                    { name: "👥 Tamanho:", value: `\`${config.quantidade}x${config.quantidade}\``, inline: true }
                 );
                 try {
                     await msgOriginal.edit({ embeds: [newEmbed] });
@@ -108,8 +96,8 @@ module.exports = async (interaction) => {
                 return;
             }
 
-            // --- FILAS (Entrar, Sair, Confirmar) ---
-            if (customId === "entrar_fila1" || customId === "entrar_fila2" || customId === "sair_fila") {
+            // --- BOTÕES DO PAINEL (Entrar, Sair, Confirmar) ---
+            if (customId === "entrar_fila1" || customId === "sair_fila" || customId === "confirmar_partida") {
                 if (!interaction.deferred && !interaction.replied) {
                     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
                 }
@@ -119,29 +107,88 @@ module.exports = async (interaction) => {
                 if (!configReal) {
                     const titulo = message.embeds[0]?.title || "";
                     const partes = titulo.split("|");
-                    const modo = partes[0]?.trim() || "Mobile";
                     const valor = partes[1]?.trim() || "5,00";
-                    configReal = { modo, valor, quantidade: 1 };
+                    configReal = { valor, quantidade: 1 };
                     filas.setConfig(painelId, configReal);
                 }
 
-                let tipoFila = null;
                 if (customId === "entrar_fila1") {
-                    tipoFila = "normal";
-                } else if (customId === "entrar_fila2") {
-                    tipoFila = "infinito";
-                }
-
-                if (customId === "sair_fila") {
-                    filas.sairFila(painelId, user);
-                } else {
-                    const resultado = filas.entrarFila(painelId, tipoFila, user);
+                    const resultado = filas.entrarFila(painelId, "normal", user);
                     if (!resultado.ok) {
                         await interaction.editReply({ content: resultado.motivo });
                         return;
                     }
+                } else if (customId === "sair_fila") {
+                    filas.sairFila(painelId, user);
+                } else if (customId === "confirmar_partida") {
+                    // Lógica de confirmação progressiva
+                    const qtd = (configReal.quantidade || 1) * 2;
+                    const listaNormal = filas.jogadores("normal", painelId);
+                    const listaInfinito = filas.jogadores("infinito", painelId);
+                    const totalJogadores = listaNormal.length + listaInfinito.length;
+                    const confirmados = filas.getConfirmados(painelId);
+
+                    if (totalJogadores < qtd) {
+                        await interaction.editReply({ content: "❌ A fila ainda não está cheia." });
+                        return;
+                    }
+
+                    if (!confirmados.includes(user.id)) {
+                        filas.adicionarConfirmado(painelId, user.id);
+                    }
+
+                    const novosConfirmados = filas.getConfirmados(painelId);
+                    const novoPainel = painelBuilder(configReal, listaNormal, listaInfinito, novosConfirmados);
+                    try {
+                        await message.edit(novoPainel);
+                    } catch (err) {
+                        console.error("Erro ao editar painel após confirmação:", err);
+                    }
+
+                    if (novosConfirmados.length >= qtd) {
+                        // Criar canal da partida
+                        try {
+                            const nomeCanal = `partida-${Date.now()}`;
+                            const canalPartida = await guild.channels.create({
+                                name: nomeCanal,
+                                type: ChannelType.GuildText,
+                                topic: painelId,
+                                permissionOverwrites: [
+                                    { id: guild.id, deny: [PermissionFlagsBits.ViewChannel] },
+                                    ...listaNormal.map(j => ({
+                                        id: j.id,
+                                        allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages]
+                                    })),
+                                    ...listaInfinito.map(j => ({
+                                        id: j.id,
+                                        allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages]
+                                    }))
+                                ]
+                            });
+
+                            filas.setMatchChannel(painelId, canalPartida.id);
+                            filas.setMatchStatus(painelId, "confirmada");
+                            filas.limparFilas(painelId);
+
+                            const jogadoresMencao = [...listaNormal, ...listaInfinito].map(j => `<@${j.id}>`).join(" ");
+
+                            await canalPartida.send({
+                                content: `🎮 **Partida confirmada!** ${jogadoresMencao}`
+                            });
+
+                            await interaction.editReply({ content: `✅ Partida confirmada! Canal criado: <#${canalPartida.id}>` });
+                        } catch (err) {
+                            console.error("Erro ao criar canal:", err);
+                            await interaction.editReply({ content: "❌ Erro ao criar o canal de partida." });
+                        }
+                    } else {
+                        const faltam = qtd - novosConfirmados.length;
+                        await interaction.editReply({ content: `✅ Você confirmou! Faltam ${faltam} jogador(es) confirmarem.` });
+                    }
+                    return;
                 }
 
+                // Atualiza o painel após entrar/sair
                 const listaNormal = filas.jogadores("normal", painelId);
                 const listaInfinito = filas.jogadores("infinito", painelId);
                 const confirmados = filas.getConfirmados(painelId);
@@ -159,215 +206,9 @@ module.exports = async (interaction) => {
                 await interaction.editReply({ content: resposta });
                 return;
             }
-
-            // --- CONFIRMAR ---
-            if (customId === "confirmar_partida") {
-                if (!interaction.deferred && !interaction.replied) {
-                    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-                }
-
-                const painelId = message.id;
-                const configReal = filas.getConfig(painelId);
-                if (!configReal) {
-                    await interaction.editReply({ content: "❌ Configuração não encontrada." });
-                    return;
-                }
-
-                const qtd = (configReal.quantidade || 1) * 2;
-                const listaNormal = filas.jogadores("normal", painelId);
-                const listaInfinito = filas.jogadores("infinito", painelId);
-                const totalJogadores = listaNormal.length + listaInfinito.length;
-                const confirmados = filas.getConfirmados(painelId);
-
-                if (totalJogadores < qtd) {
-                    await interaction.editReply({ content: "❌ A fila ainda não está cheia." });
-                    return;
-                }
-
-                if (!confirmados.includes(user.id)) {
-                    filas.adicionarConfirmado(painelId, user.id);
-                }
-
-                const novosConfirmados = filas.getConfirmados(painelId);
-                const novoPainel = painelBuilder(configReal, listaNormal, listaInfinito, novosConfirmados);
-                try {
-                    await message.edit(novoPainel);
-                } catch (err) {
-                    console.error("Erro ao editar painel após confirmação:", err);
-                }
-
-                if (novosConfirmados.length >= qtd) {
-                    try {
-                        const nomeCanal = `partida-${Date.now()}`;
-                        const canalPartida = await guild.channels.create({
-                            name: nomeCanal,
-                            type: ChannelType.GuildText,
-                            topic: painelId,
-                            permissionOverwrites: [
-                                { id: guild.id, deny: [PermissionFlagsBits.ViewChannel] },
-                                ...listaNormal.map(j => ({
-                                    id: j.id,
-                                    allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages]
-                                })),
-                                ...listaInfinito.map(j => ({
-                                    id: j.id,
-                                    allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages]
-                                }))
-                            ]
-                        });
-
-                        filas.setMatchChannel(painelId, canalPartida.id);
-                        filas.setMatchStatus(painelId, "confirmada");
-                        filas.limparFilas(painelId);
-
-                        const jogadoresMencao = [...listaNormal, ...listaInfinito].map(j => `<@${j.id}>`).join(" ");
-
-                        const controlRow = new ActionRowBuilder()
-                            .addComponents(
-                                new ButtonBuilder().setCustomId("mediador_senha").setLabel("🔑 Senha").setStyle(ButtonStyle.Secondary),
-                                new ButtonBuilder().setCustomId("mediador_codigo").setLabel("📟 Código").setStyle(ButtonStyle.Secondary),
-                                new ButtonBuilder().setCustomId("mediador_cancelar").setLabel("❌ Cancelar").setStyle(ButtonStyle.Danger),
-                                new ButtonBuilder().setCustomId("mediador_vencedor").setLabel("🏆 Vencedor").setStyle(ButtonStyle.Success)
-                            );
-                        const controlRow2 = new ActionRowBuilder()
-                            .addComponents(
-                                new ButtonBuilder().setCustomId("mediador_finalizar").setLabel("🏁 Finalizar").setStyle(ButtonStyle.Danger),
-                                new ButtonBuilder().setCustomId("mediador_pagamento").setLabel("💰 Pagamento").setStyle(ButtonStyle.Primary)
-                            );
-
-                        await canalPartida.send({
-                            content: `🎮 **Partida confirmada!** ${jogadoresMencao}`
-                        });
-
-                        await canalPartida.send({
-                            content: "🛠️ **Painel de Controle**",
-                            components: [controlRow, controlRow2],
-                            ephemeral: true
-                        });
-
-                        await interaction.editReply({ content: `✅ Partida confirmada! Canal criado: <#${canalPartida.id}>` });
-                    } catch (err) {
-                        console.error("Erro ao criar canal:", err);
-                        await interaction.editReply({ content: "❌ Erro ao criar o canal de partida." });
-                    }
-                } else {
-                    const faltam = qtd - novosConfirmados.length;
-                    await interaction.editReply({ content: `✅ Você confirmou! Faltam ${faltam} jogador(es) confirmarem.` });
-                }
-                return;
-            }
-
-            // --- MEDIADOR ---
-            if (customId.startsWith("mediador_")) {
-                const painelId = interaction.channel.topic || null;
-                if (!painelId) {
-                    await interaction.reply({ content: "❌ Painel não encontrado.", flags: MessageFlags.Ephemeral });
-                    return;
-                }
-
-                if (customId === "mediador_senha") {
-                    const modal = new ModalBuilder()
-                        .setCustomId(`modal_senha_${painelId}`)
-                        .setTitle("Senha da Sala");
-                    const input = new TextInputBuilder()
-                        .setCustomId("input_senha").setLabel("Senha").setStyle(TextInputStyle.Short).setRequired(true);
-                    modal.addComponents(new ActionRowBuilder().addComponents(input));
-                    await interaction.showModal(modal);
-                    return;
-                }
-
-                if (customId === "mediador_codigo") {
-                    const modal = new ModalBuilder()
-                        .setCustomId(`modal_codigo_${painelId}`)
-                        .setTitle("Código da Sala");
-                    const input = new TextInputBuilder()
-                        .setCustomId("input_codigo").setLabel("Código").setStyle(TextInputStyle.Short).setRequired(true);
-                    modal.addComponents(new ActionRowBuilder().addComponents(input));
-                    await interaction.showModal(modal);
-                    return;
-                }
-
-                if (customId === "mediador_cancelar") {
-                    await filas.limparFilas(painelId);
-                    filas.setMatchStatus(painelId, "cancelada");
-                    await interaction.reply({ content: "✅ Partida cancelada.", flags: MessageFlags.Ephemeral });
-                    setTimeout(async () => {
-                        try { await interaction.channel.delete(); } catch (err) { console.error(err); }
-                    }, 5000);
-                    return;
-                }
-
-                if (customId === "mediador_vencedor") {
-                    const listaNormal = filas.jogadores("normal", painelId);
-                    const listaInfinito = filas.jogadores("infinito", painelId);
-                    const select = new StringSelectMenuBuilder()
-                        .setCustomId(`select_vencedor_${painelId}`)
-                        .setPlaceholder("Vencedor")
-                        .addOptions(
-                            new StringSelectMenuOptionBuilder().setLabel("Time Normal").setValue("normal"),
-                            new StringSelectMenuOptionBuilder().setLabel("Time Infinito").setValue("infinito")
-                        );
-                    await interaction.reply({ content: "Escolha o time:", components: [new ActionRowBuilder().addComponents(select)], flags: MessageFlags.Ephemeral });
-                    return;
-                }
-
-                if (customId === "mediador_finalizar") {
-                    await filas.limparFilas(painelId);
-                    filas.setMatchStatus(painelId, "finalizada");
-                    await interaction.reply({ content: "🏁 Finalizada.", flags: MessageFlags.Ephemeral });
-                    setTimeout(async () => {
-                        try { await interaction.channel.delete(); } catch (err) { console.error(err); }
-                    }, 3000);
-                    return;
-                }
-
-                if (customId === "mediador_pagamento") {
-                    const modal = new ModalBuilder()
-                        .setCustomId(`modal_pagamento_${painelId}`)
-                        .setTitle("Chave de Pagamento");
-                    const input = new TextInputBuilder()
-                        .setCustomId("input_chave").setLabel("Chave PIX").setStyle(TextInputStyle.Short).setRequired(true);
-                    modal.addComponents(new ActionRowBuilder().addComponents(input));
-                    await interaction.showModal(modal);
-                    return;
-                }
-            }
         }
 
-        // --- MODAIS ---
-        if (interaction.isModalSubmit()) {
-            if (!interaction.deferred && !interaction.replied) {
-                await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-            }
-            const customId = interaction.customId;
-            const parts = customId.split('_');
-            const modalType = parts[1];
-            const painelId = parts.slice(2).join('_');
-
-            if (modalType === 'senha') {
-                const senha = interaction.fields.getTextInputValue('input_senha');
-                await interaction.editReply({ content: `🔑 Senha: \`${senha}\`` });
-            } else if (modalType === 'codigo') {
-                const codigo = interaction.fields.getTextInputValue('input_codigo');
-                await interaction.editReply({ content: `📟 Código: \`${codigo}\`` });
-            } else if (modalType === 'pagamento') {
-                const chave = interaction.fields.getTextInputValue('input_chave');
-                await interaction.editReply({ content: `💰 Chave PIX: \`${chave}\`` });
-            }
-            return;
-        }
-
-        // --- MENU VENCEDOR ---
-        if (interaction.isStringSelectMenu() && interaction.customId.startsWith('select_vencedor_')) {
-            if (!interaction.deferred && !interaction.replied) {
-                await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-            }
-            const painelId = interaction.customId.replace('select_vencedor_', '');
-            const vencedor = interaction.values[0];
-            await interaction.editReply({ content: `🏆 Vencedor: **${vencedor === 'normal' ? 'Time Normal' : 'Time Infinito'}**` });
-            return;
-        }
-
+        // Se nenhum caso foi atendido
         if (!interaction.replied && !interaction.deferred) {
             await interaction.reply({ content: "❌ Interação não reconhecida.", flags: MessageFlags.Ephemeral });
         }

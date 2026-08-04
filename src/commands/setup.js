@@ -16,28 +16,13 @@ module.exports = {
             .setTitle("⚙️ Configuração do Painel")
             .setDescription("Configure abaixo e clique em 'Enviar Painéis'.")
             .addFields(
-                { name: "🎮 Modo:", value: config.modo || "Mobile", inline: true },
                 { name: "💰 Valor:", value: `\`${config.valor || "5,00"}\``, inline: true },
-                { name: "👥 Tamanho:", value: `\`${config.quantidade}x${config.quantidade}\``, inline: true },
-                { name: "😊 Emoji Gel:", value: config.emojiGel || "Nenhum", inline: true },
-                { name: "😊 Emoji Emulador:", value: config.emojiEmulador || "Nenhum", inline: true }
+                { name: "👥 Tamanho:", value: `\`${config.quantidade}x${config.quantidade}\``, inline: true }
             )
             .setFooter({ text: "Só você pode ver esta mensagem • Ignorar mensagem" });
 
-        // LINHA 1: Modo (sozinho)
+        // LINHA 1: Valor
         const row1 = new ActionRowBuilder().addComponents(
-            new StringSelectMenuBuilder()
-                .setCustomId("select_modo")
-                .setPlaceholder("Modo")
-                .addOptions(
-                    new StringSelectMenuOptionBuilder().setLabel("Mobile").setValue("Mobile"),
-                    new StringSelectMenuOptionBuilder().setLabel("Emulador").setValue("Emulador"),
-                    new StringSelectMenuOptionBuilder().setLabel("Misto").setValue("Misto")
-                )
-        );
-
-        // LINHA 2: Valor (sozinho)
-        const row2 = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("select_valor")
                 .setPlaceholder("Valor")
@@ -54,8 +39,8 @@ module.exports = {
                 )
         );
 
-        // LINHA 3: Quantidade + Botão Enviar (cabem juntos)
-        const row3 = new ActionRowBuilder().addComponents(
+        // LINHA 2: Quantidade
+        const row2 = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("select_quantidade")
                 .setPlaceholder("Tamanho da fila")
@@ -64,46 +49,20 @@ module.exports = {
                     new StringSelectMenuOptionBuilder().setLabel("2x2 (4 jogadores)").setValue("2"),
                     new StringSelectMenuOptionBuilder().setLabel("3x3 (6 jogadores)").setValue("3"),
                     new StringSelectMenuOptionBuilder().setLabel("4x4 (8 jogadores)").setValue("4")
-                ),
+                )
+        );
+
+        // LINHA 3: Botão Enviar
+        const row3 = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
                 .setCustomId("enviar_paineis")
                 .setLabel("🚀 Enviar Painéis")
                 .setStyle(ButtonStyle.Primary)
         );
 
-        // LINHA 4: Emoji Gel (10 opções)
-        const row4 = new ActionRowBuilder().addComponents(
-            new StringSelectMenuBuilder()
-                .setCustomId("select_emoji_gel")
-                .setPlaceholder("Emoji Gel")
-                .addOptions(
-                    interaction.guild.emojis.cache.first(10).map(e =>
-                        new StringSelectMenuOptionBuilder()
-                            .setLabel(e.name)
-                            .setValue(`<:${e.name}:${e.id}>`)
-                            .setEmoji({ id: e.id, name: e.name })
-                    )
-                )
-        );
-
-        // LINHA 5: Emoji Emulador (10 opções)
-        const row5 = new ActionRowBuilder().addComponents(
-            new StringSelectMenuBuilder()
-                .setCustomId("select_emoji_emulador")
-                .setPlaceholder("Emoji Emulador")
-                .addOptions(
-                    interaction.guild.emojis.cache.first(10).map(e =>
-                        new StringSelectMenuOptionBuilder()
-                            .setLabel(e.name)
-                            .setValue(`<:${e.name}:${e.id}>`)
-                            .setEmoji({ id: e.id, name: e.name })
-                    )
-                )
-        );
-
         await interaction.reply({ 
             embeds: [embed], 
-            components: [row1, row2, row3, row4, row5],
+            components: [row1, row2, row3],
             flags: MessageFlags.Ephemeral
         });
     }
