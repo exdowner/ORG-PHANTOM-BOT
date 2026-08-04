@@ -24,7 +24,7 @@ module.exports = {
             )
             .setFooter({ text: "Só você pode ver esta mensagem • Ignorar mensagem" });
 
-        // LINHA 1: Modo + Valor (2 menus na mesma linha)
+        // LINHA 1: Modo (sozinho)
         const row1 = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("select_modo")
@@ -33,7 +33,11 @@ module.exports = {
                     new StringSelectMenuOptionBuilder().setLabel("Mobile").setValue("Mobile"),
                     new StringSelectMenuOptionBuilder().setLabel("Emulador").setValue("Emulador"),
                     new StringSelectMenuOptionBuilder().setLabel("Misto").setValue("Misto")
-                ),
+                )
+        );
+
+        // LINHA 2: Valor (sozinho)
+        const row2 = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("select_valor")
                 .setPlaceholder("Valor")
@@ -50,8 +54,8 @@ module.exports = {
                 )
         );
 
-        // LINHA 2: Quantidade
-        const row2 = new ActionRowBuilder().addComponents(
+        // LINHA 3: Quantidade (sozinho)
+        const row3 = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("select_quantidade")
                 .setPlaceholder("Tamanho da fila")
@@ -63,8 +67,8 @@ module.exports = {
                 )
         );
 
-        // LINHA 3: Emoji Gel
-        const row3 = new ActionRowBuilder().addComponents(
+        // LINHA 4: Emoji Gel (sozinho)
+        const row4 = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("select_emoji_gel")
                 .setPlaceholder("Emoji Gel")
@@ -78,8 +82,8 @@ module.exports = {
                 )
         );
 
-        // LINHA 4: Emoji Emulador
-        const row4 = new ActionRowBuilder().addComponents(
+        // LINHA 5: Emoji Emulador + Botão Enviar (menu + botão, seguro)
+        const row5 = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("select_emoji_emulador")
                 .setPlaceholder("Emoji Emulador")
@@ -90,18 +94,13 @@ module.exports = {
                             .setValue(`<:${e.name}:${e.id}>`)
                             .setEmoji({ id: e.id, name: e.name })
                     )
-                )
-        );
-
-        // LINHA 5: Botão Enviar (sozinho para não estourar largura)
-        const row5 = new ActionRowBuilder().addComponents(
+                ),
             new ButtonBuilder()
                 .setCustomId("enviar_paineis")
                 .setLabel("🚀 Enviar Painéis")
                 .setStyle(ButtonStyle.Primary)
         );
 
-        // Resposta única
         await interaction.reply({ 
             embeds: [embed], 
             components: [row1, row2, row3, row4, row5],
