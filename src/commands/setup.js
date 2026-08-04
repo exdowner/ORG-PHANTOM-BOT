@@ -16,14 +16,13 @@ module.exports = {
         const embed = new EmbedBuilder()
             .setColor("#2b2d31")
             .setTitle(`⚙️ Configuração do Painel`)
-            .setDescription("Configure abaixo e clique em 'Enviar Painéis' para gerar os painéis com todos os valores.")
+            .setDescription("Configure abaixo e clique em 'Enviar Painéis' para gerar os painéis.")
             .addFields(
                 { name: "💰 Valor selecionado:", value: `\`${config.valor || "20,00"}\``, inline: true },
                 { name: "👥 Tamanho da fila:", value: `\`${config.quantidade}x${config.quantidade}\``, inline: true }
             )
             .setFooter({ text: "Só você pode ver esta mensagem • Ignorar mensagem" });
 
-        // Dropdown de Valor
         const row1 = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("select_valor")
@@ -41,7 +40,6 @@ module.exports = {
                 )
         );
 
-        // Dropdown de Quantidade
         const row2 = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("select_quantidade")
@@ -54,7 +52,6 @@ module.exports = {
                 )
         );
 
-        // Botão Enviar Painéis
         const row3 = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
                 .setCustomId("enviar_paineis")

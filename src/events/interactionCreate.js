@@ -5,9 +5,7 @@ const {
     ButtonBuilder,
     ButtonStyle,
     StringSelectMenuBuilder,
-    StringSelectMenuOptionBuilder,
-    ChannelType,
-    PermissionFlagsBits
+    StringSelectMenuOptionBuilder
 } = require("discord.js");
 const filas = require("../systems/filas.js");
 const painelBuilder = require("../systems/painelBuilder.js");
@@ -47,7 +45,6 @@ module.exports = async (interaction) => {
 
             salvarConfig(config);
 
-            // Atualiza o preview do /setup
             const msgOriginal = interaction.message;
             if (msgOriginal && msgOriginal.embeds.length > 0) {
                 const embed = EmbedBuilder.from(msgOriginal.embeds[0]);
@@ -64,7 +61,7 @@ module.exports = async (interaction) => {
 
         // ----- BOTÕES -----
         if (interaction.isButton()) {
-            const { customId, user, guild, message, channel } = interaction;
+            const { customId, user, guild, message } = interaction;
 
             // ----- BOTÃO "ENVIAR PAINÉIS" (do /setup) -----
             if (customId === "enviar_paineis") {
@@ -77,7 +74,7 @@ module.exports = async (interaction) => {
 
                 for (const valor of valores) {
                     const configAtual = { ...configBase, valor };
-                    const painel = painelBuilder(configAtual, [], []);
+                    const painel = painelBuilder(configAtual, []);
                     if (!painel.components || painel.components.length === 0) continue;
 
                     try {
@@ -96,17 +93,15 @@ module.exports = async (interaction) => {
                 return await interaction.editReply({ content: `✅ ${enviados} painéis enviados!` });
             }
 
-            // ----- BOTÕES DO PAINEL DE FILA (Entrar / Sair / Confirmar) -----
-            if (customId === "entrar_gel_normal" || customId === "sair_fila" || customId === "confirmar_partida") {
-                // Defer a resposta para evitar travamentos
+            // ----- BOTÕES DO PAINEL DE FILA (Entrar / Sair) -----
+            if (customId === "entrar_fila" || customId === "sair_fila") {
                 await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
                 const painelId = message.id;
 
-                // Verifica se a configuração do painel existe
+                // Verifica ou recupera a configuração do painel
                 let configReal = filas.getConfig(painelId);
                 if (!configReal) {
-                    // Tenta recuperar do título do embed
                     const titulo = message.embeds[0]?.title || "";
                     const partes = titulo.split("|");
                     const nomePainel = partes[0]?.trim() || "PHANTOM";
@@ -116,60 +111,23 @@ module.exports = async (interaction) => {
                 }
 
                 // Ações
-                if (customId === "entrar_gel_normal") {
-                    // Entra na fila Normal
+                if (customId === "entrar_fila") {
                     const resultado = filas.entrarFila(painelId, "normal", user);
                     if (!resultado.ok) {
                         return await interaction.editReply({ content: resultado.motivo });
                     }
                 } else if (customId === "sair_fila") {
                     filas.sairFila(painelId, user);
-                } else if (customId === "confirmar_partida") {
-                    // Quando confirmar, cria um canal privado
-                    const filaNormal = filas.jogadores("normal", painelId);
-                    const qtd = (configReal.quantidade || 1) * 2;
-
-                    if (filaNormal.length < qtd) {
-                        return await interaction.editReply({ content: "❌ A fila ainda não está completa." });
-                    }
-
-                    try {
-                        const nomeCanal = `partida-${Date.now()}`;
-                        const canalPartida = await guild.channels.create({
-                            name: nomeCanal,
-                            type: ChannelType.GuildText,
-                            permissionOverwrites: [
-                                { id: guild.id, deny: [PermissionFlagsBits.ViewChannel] },
-                                ...filaNormal.map(j => ({
-                                    id: j.id,
-                                    allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages]
-                                }))
-                            ]
-                        });
-
-                        // Envia mensagem de confirmação
-                        await canalPartida.send({
-                            content: `👋 Olá ${filaNormal.map(j => `<@${j.id}>`).join(", ")}! A partida foi confirmada.\n\n**Valor:** ${configReal.valor}\n**Quantidade:** ${qtd} jogadores`
-                        });
-
-                        await interaction.editReply({ content: `✅ Partida confirmada! Canal criado: <#${canalPartida.id}>` });
-                    } catch (err) {
-                        console.error("Erro ao criar canal:", err);
-                        await interaction.editReply({ content: "❌ Erro ao criar o canal de confirmação." });
-                    }
-                    return;
                 }
 
-                // Atualiza o painel público (embed)
-                const listaNormal = filas.jogadores("normal", painelId);
-                const listaInfinito = filas.jogadores("infinito", painelId); // (não usado, mas mantido)
-                const novoPainel = painelBuilder(configReal, listaNormal, listaInfinito);
+                // Atualiza o painel público (agora recebe apenas uma lista)
+                const lista = filas.jogadores("normal", painelId);
+                const novoPainel = painelBuilder(configReal, lista);
 
                 try {
                     await message.edit(novoPainel);
                 } catch (err) {
                     console.error("Erro ao editar painel:", err);
-                    // Tentar novamente após 1s
                     setTimeout(async () => {
                         try {
                             await message.edit(novoPainel);
@@ -177,7 +135,6 @@ module.exports = async (interaction) => {
                     }, 1000);
                 }
 
-                // Resposta ao usuário
                 if (customId === "sair_fila") {
                     return await interaction.editReply({ content: `🚪 <@${user.id}>, saiu da fila!` });
                 } else {
