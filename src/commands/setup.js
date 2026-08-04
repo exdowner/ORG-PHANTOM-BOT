@@ -18,7 +18,7 @@ module.exports = {
             .setTitle(`⚙️ Configuração do Painel`)
             .setDescription("Configure abaixo e clique em 'Enviar Painéis' para gerar os painéis.")
             .addFields(
-                { name: "💰 Valor selecionado:", value: `\`${config.valor || "20,00"}\``, inline: true },
+                { name: "💰 Valor selecionado:", value: `\`${config.valor || "5,00"}\``, inline: true },
                 { name: "👥 Tamanho da fila:", value: `\`${config.quantidade}x${config.quantidade}\``, inline: true }
             )
             .setFooter({ text: "Só você pode ver esta mensagem • Ignorar mensagem" });

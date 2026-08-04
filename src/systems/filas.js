@@ -20,76 +20,102 @@ function salvarConfigs(dados) {
     fs.writeFileSync(caminhoArquivo, JSON.stringify(dados, null, 2));
 }
 
-let configsCache = carregarConfigs();
+let paineisCache = carregarConfigs();
 
 module.exports = {
     setConfig(painelId, config) {
-        if (!configsCache[painelId]) {
-            configsCache[painelId] = {
+        if (!paineisCache[painelId]) {
+            paineisCache[painelId] = {
                 normal: [],
                 infinito: [],
-                '1emulador': [],
-                '2emuladores': [],
-                config: null
+                config: null,
+                matchChannelId: null,
+                matchStatus: "pendente" // pendente, confirmada, finalizada
             };
         }
-        configsCache[painelId].config = JSON.parse(JSON.stringify(config));
-        salvarConfigs(configsCache);
+        paineisCache[painelId].config = JSON.parse(JSON.stringify(config));
+        salvarConfigs(paineisCache);
     },
 
     getConfig(painelId) {
-        const data = configsCache[painelId];
+        const data = paineisCache[painelId];
         if (!data || !data.config) return null;
         return data.config;
     },
 
+    getMatchData(painelId) {
+        return paineisCache[painelId] || null;
+    },
+
+    setMatchChannel(painelId, channelId) {
+        if (!paineisCache[painelId]) return;
+        paineisCache[painelId].matchChannelId = channelId;
+        salvarConfigs(paineisCache);
+    },
+
+    setMatchStatus(painelId, status) {
+        if (!paineisCache[painelId]) return;
+        paineisCache[painelId].matchStatus = status;
+        salvarConfigs(paineisCache);
+    },
+
     entrarFila(painelId, tipoFila, user) {
         if (!painelId || !tipoFila || !user) {
-            return { ok: false, motivo: "❌ Dados inválidos para entrar na fila." };
+            return { ok: false, motivo: "❌ Dados inválidos." };
         }
-        if (!configsCache[painelId]) {
-            configsCache[painelId] = {
+        if (!paineisCache[painelId]) {
+            paineisCache[painelId] = {
                 normal: [],
                 infinito: [],
-                '1emulador': [],
-                '2emuladores': [],
-                config: null
+                config: null,
+                matchChannelId: null,
+                matchStatus: "pendente"
             };
-            salvarConfigs(configsCache);
+            salvarConfigs(paineisCache);
         }
-        const fila = configsCache[painelId];
-        for (const key in fila) {
-            if (key === 'config') continue;
+        const fila = paineisCache[painelId];
+        // Verifica se já está em alguma fila
+        for (const key of ['normal', 'infinito']) {
             if (fila[key].some(j => j.id === user.id)) {
-                return { ok: false, motivo: `❌ <@${user.id}>, você já está em uma fila deste painel!` };
+                return { ok: false, motivo: `❌ <@${user.id}>, você já está em uma fila!` };
             }
         }
-        if (fila[tipoFila]) {
-            fila[tipoFila].push(user);
-            salvarConfigs(configsCache);
-            return { ok: true };
+        if (tipoFila === 'normal') {
+            fila.normal.push(user);
+        } else if (tipoFila === 'infinito') {
+            fila.infinito.push(user);
+        } else {
+            return { ok: false, motivo: "❌ Tipo de fila inválido." };
         }
-        return { ok: false, motivo: "❌ Tipo de fila inválido." };
+        salvarConfigs(paineisCache);
+        return { ok: true };
     },
 
     sairFila(painelId, user) {
         if (!painelId || !user) return;
-        const fila = configsCache[painelId];
+        const fila = paineisCache[painelId];
         if (!fila) return;
         let removeu = false;
-        for (const key in fila) {
-            if (key === 'config') continue;
+        for (const key of ['normal', 'infinito']) {
             const antes = fila[key].length;
             fila[key] = fila[key].filter(j => j.id !== user.id);
             if (fila[key].length < antes) removeu = true;
         }
-        if (removeu) salvarConfigs(configsCache);
+        if (removeu) salvarConfigs(paineisCache);
     },
 
     jogadores(tipoFila, painelId) {
         if (!painelId || !tipoFila) return [];
-        const fila = configsCache[painelId];
+        const fila = paineisCache[painelId];
         if (!fila) return [];
         return fila[tipoFila] || [];
+    },
+
+    // Remove todos os jogadores (útil após finalizar)
+    limparFilas(painelId) {
+        if (!paineisCache[painelId]) return;
+        paineisCache[painelId].normal = [];
+        paineisCache[painelId].infinito = [];
+        salvarConfigs(paineisCache);
     }
 };

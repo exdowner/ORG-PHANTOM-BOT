@@ -3,7 +3,6 @@ const path = require("path");
 
 const caminhoArquivo = path.join(__dirname, "../../botConfig.json");
 
-// Carrega as configurações do arquivo, ou cria um padrão
 function carregarConfig() {
     try {
         if (fs.existsSync(caminhoArquivo)) {
@@ -13,17 +12,11 @@ function carregarConfig() {
     } catch (err) {
         console.error("Erro ao carregar config:", err);
     }
-    // Configuração padrão
     return {
         nomePainel: "PHANTOM",
-        valor: "20,00",
-        quantidade: 1,
-        emojiGelNormal: null,
-        emojiGelInfinito: null,
-        emojiEmul1: null,
-        emojiEmul2: null,
-        emojiSair: null,
-        modo: "Mobile",
+        valor: "5,00",
+        quantidade: 1, // 1 = 1x1
+        modo: "Mobile", // ou "Misto"
         modoMisto: false
     };
 }
@@ -36,13 +29,7 @@ function salvarConfig(novaConfig) {
     }
 }
 
-// Exporta as funções
 module.exports = {
     pegarConfig: carregarConfig,
-    salvarConfig,
-    mudarConfig: (campo, valor) => {
-        const config = carregarConfig();
-        config[campo] = valor;
-        salvarConfig(config);
-    }
+    salvarConfig
 };
