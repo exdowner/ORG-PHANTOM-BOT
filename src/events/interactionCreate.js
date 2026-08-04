@@ -284,13 +284,13 @@ module.exports = async (interaction) => {
                 }
             }
 
-            // ================== LÓGICA DAS FILAS (ENTRAR / SAIR) COM MAPEAMENTO EXPLÍCITO ==================
+            // ================== LÓGICA DAS FILAS (ENTRAR / SAIR) COM CORREÇÃO DE ATUALIZAÇÃO ==================
             if (customId.startsWith("entrar_") || customId === "sair_fila") {
                 const painelId = message.id;
 
+                // Pega a configuração do painel (fallback silencioso, se necessário)
                 let configReal = filas.getConfig(painelId);
 
-                // Fallback silencioso (caso o bot tenha reiniciado)
                 if (!configReal) {
                     console.log(`🔁 [RECUPERAÇÃO] Painel ${painelId} sem configuração. Extraindo dos botões...`);
 
@@ -341,12 +341,12 @@ module.exports = async (interaction) => {
                 let tipoFila = customId.replace("entrar_", "");
                 let nomeFila = tipoFila;
 
-                // 🔥 CORREÇÃO EXPLÍCITA AQUI: Mapeia exatamente para as chaves do filas.js
                 if (tipoFila === "gel_normal") nomeFila = "normal";
                 else if (tipoFila === "gel_inf") nomeFila = "infinito";
-                else if (tipoFila === "1emulador") nomeFila = "1emulador"; // Garantido
-                else if (tipoFila === "2emuladores") nomeFila = "2emuladores"; // Garantido
+                else if (tipoFila === "1emulador") nomeFila = "1emulador";
+                else if (tipoFila === "2emuladores") nomeFila = "2emuladores";
 
+                // Executa a ação (entrar ou sair)
                 if (customId === "sair_fila") {
                     filas.sairFila(painelId, user);
                 } else {
@@ -357,6 +357,7 @@ module.exports = async (interaction) => {
                     }
                 }
 
+                // Atualiza o painel (o embed)
                 const lista1 = filas.jogadores(isEmulador ? "1emulador" : "normal", painelId);
                 const lista2 = filas.jogadores(isEmulador ? "2emuladores" : "infinito", painelId);
 
@@ -373,15 +374,24 @@ module.exports = async (interaction) => {
                     quantidade: configReal.quantidade || 1
                 };
 
+                const novoPainel = painelBuilder(configMock, lista1, lista2);
+
+                // Tenta atualizar o embed do painel
                 try {
-                    if (typeof painelBuilder === "function") {
-                        const novoPainel = painelBuilder(configMock, lista1, lista2);
-                        await message.edit(novoPainel).catch(() => {});
-                    }
+                    await message.edit(novoPainel);
                 } catch (err) {
-                    console.error("Erro ao atualizar painel público:", err);
+                    console.error("Erro ao editar o painel (embed):", err);
+                    // Se falhar, tenta uma segunda vez após um breve delay
+                    setTimeout(async () => {
+                        try {
+                            await message.edit(novoPainel);
+                        } catch (e) {
+                            console.error("Segunda tentativa de editar o painel também falhou:", e);
+                        }
+                    }, 500);
                 }
 
+                // Responde ao usuário com a mensagem de confirmação (sem conflito com o edit acima)
                 if (customId === "sair_fila") {
                     return await interaction.editReply({ content: `🚪 <@${user.id}>, saiu da fila!` });
                 }
