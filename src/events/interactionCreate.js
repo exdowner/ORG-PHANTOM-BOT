@@ -18,9 +18,8 @@ const configModule = require("../systems/config.js");
 const pegarConfig = configModule.pegarConfig || (() => ({}));
 const salvarConfig = configModule.salvarConfig || (() => ({}));
 
-// Função para verificar se o usuário pode ver o painel de mediador
 function temPermissaoMediador(member, cargosPermitidos) {
-    if (member.id === member.guild.ownerId) return true; // Owner sempre pode
+    if (member.id === member.guild.ownerId) return true;
     if (!cargosPermitidos || cargosPermitidos.length === 0) return false;
     return member.roles.cache.some(r => cargosPermitidos.includes(r.id));
 }
@@ -36,14 +35,18 @@ module.exports = async (interaction) => {
             } catch (error) {
                 console.error(`Erro em /${interaction.commandName}:`, error);
                 const msg = { content: "❌ Erro ao executar comando!", flags: MessageFlags.Ephemeral };
-                if (!interaction.replied && !interaction.deferred) await interaction.reply(msg);
-                else await interaction.followUp(msg);
+                if (!interaction.replied && !interaction.deferred) {
+                    await interaction.reply(msg);
+                } else {
+                    await interaction.followUp(msg);
+                }
             }
             return;
         }
 
         // --- MENUS DE SELEÇÃO ---
         if (interaction.isStringSelectMenu()) {
+            // Só defer se ainda não foi
             if (!interaction.deferred && !interaction.replied) {
                 await interaction.deferReply({ flags: MessageFlags.Ephemeral });
             }
@@ -68,29 +71,23 @@ module.exports = async (interaction) => {
             } else if (interaction.customId === "select_emoji_emulador") {
                 config.emojiEmulador = valor;
                 salvarConfig(config);
-            } else if (interaction.customId === "select_cargos") {
-                config.cargosPermitidos = valor; // array de IDs
-                salvarConfig(config);
             }
 
             // Atualiza preview
             const msgOriginal = interaction.message;
             if (msgOriginal && msgOriginal.embeds.length > 0) {
                 const embed = EmbedBuilder.from(msgOriginal.embeds[0]);
-                // Atualizar campos conforme necessário
+                // Atualizar campos
                 if (interaction.customId === "select_modo") {
                     embed.spliceFields(0, 1, { name: "🎮 Modo:", value: config.modo || "Mobile", inline: true });
                 } else if (interaction.customId === "select_valor") {
                     embed.spliceFields(1, 1, { name: "💰 Valor:", value: `\`${config.valor || "5,00"}\``, inline: true });
                 } else if (interaction.customId === "select_quantidade") {
-                    embed.spliceFields(2, 1, { name: "👥 Tamanho da fila:", value: `\`${config.quantidade}x${config.quantidade}\``, inline: true });
+                    embed.spliceFields(2, 1, { name: "👥 Tamanho:", value: `\`${config.quantidade}x${config.quantidade}\``, inline: true });
                 } else if (interaction.customId === "select_emoji_gel") {
                     embed.spliceFields(3, 1, { name: "😊 Emoji Gel:", value: config.emojiGel || "Nenhum", inline: true });
                 } else if (interaction.customId === "select_emoji_emulador") {
                     embed.spliceFields(4, 1, { name: "😊 Emoji Emulador:", value: config.emojiEmulador || "Nenhum", inline: true });
-                } else if (interaction.customId === "select_cargos") {
-                    const cargoList = config.cargosPermitidos?.length ? config.cargosPermitidos.map(id => `<@&${id}>`).join(", ") : "Nenhum";
-                    embed.spliceFields(5, 1, { name: "👑 Cargos Permitidos:", value: cargoList, inline: false });
                 }
                 try {
                     await msgOriginal.edit({ embeds: [embed] });
@@ -149,7 +146,7 @@ module.exports = async (interaction) => {
                 return;
             }
 
-            // ======== BOTÕES DE FILA (Entrar / Sair) ========
+            // ======== BOTÕES DE FILA ========
             if (customId === "entrar_fila1" || customId === "entrar_fila2" || customId === "sair_fila") {
                 if (!interaction.deferred && !interaction.replied) {
                     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
@@ -163,11 +160,10 @@ module.exports = async (interaction) => {
                     const partes = titulo.split("|");
                     const modo = partes[0]?.trim() || "Mobile";
                     const valor = partes[1]?.trim() || "5,00";
-                    configReal = { modo, valor, quantidade: 1, emojiGel: null, emojiEmulador: null, cargosPermitidos: [] };
+                    configReal = { modo, valor, quantidade: 1, emojiGel: null, emojiEmulador: null };
                     filas.setConfig(painelId, configReal);
                 }
 
-                // Mapear tipo de fila: normal (fila1) ou infinito (fila2)
                 let tipoFila = null;
                 if (customId === "entrar_fila1") {
                     tipoFila = "normal";
@@ -189,7 +185,6 @@ module.exports = async (interaction) => {
                     }
                 }
 
-                // Atualizar painel com os confirmados atuais
                 const listaNormal = filas.jogadores("normal", painelId);
                 const listaInfinito = filas.jogadores("infinito", painelId);
                 const confirmados = filas.getConfirmados(painelId);
@@ -231,18 +226,15 @@ module.exports = async (interaction) => {
                 const totalJogadores = listaNormal.length + listaInfinito.length;
                 const confirmados = filas.getConfirmados(painelId);
 
-                // Verifica se a fila está cheia
                 if (totalJogadores < qtd) {
                     await interaction.editReply({ content: "❌ A fila ainda não está cheia." });
                     return;
                 }
 
-                // Adiciona o jogador à lista de confirmados
                 if (!confirmados.includes(user.id)) {
                     filas.adicionarConfirmado(painelId, user.id);
                 }
 
-                // Atualiza o painel com os confirmados atualizados
                 const novosConfirmados = filas.getConfirmados(painelId);
                 const novoPainel = painelBuilder(configReal, listaNormal, listaInfinito, novosConfirmados);
                 try {
@@ -251,7 +243,6 @@ module.exports = async (interaction) => {
                     console.error("Erro ao editar painel após confirmação:", err);
                 }
 
-                // Verifica se todos confirmaram
                 if (novosConfirmados.length >= qtd) {
                     // Criar canal da partida
                     try {
@@ -275,15 +266,13 @@ module.exports = async (interaction) => {
 
                         filas.setMatchChannel(painelId, canalPartida.id);
                         filas.setMatchStatus(painelId, "confirmada");
-                        filas.limparFilas(painelId); // limpa as filas após criar o canal
+                        filas.limparFilas(painelId);
 
-                        // Menciona os jogadores no canal
                         const jogadoresMencao = [...listaNormal, ...listaInfinito].map(j => `<@${j.id}>`).join(" ");
 
                         // Painel de controle (ephemeral) para cargos autorizados
                         const cargosPermitidos = configReal.cargosPermitidos || [];
 
-                        // Botões de controle
                         const controlRow = new ActionRowBuilder()
                             .addComponents(
                                 new ButtonBuilder().setCustomId("mediador_senha").setLabel("🔑 Senha").setStyle(ButtonStyle.Secondary),
@@ -297,17 +286,15 @@ module.exports = async (interaction) => {
                                 new ButtonBuilder().setCustomId("mediador_pagamento").setLabel("💰 Pagamento").setStyle(ButtonStyle.Primary)
                             );
 
-                        // Envia mensagem de boas-vindas pública
                         await canalPartida.send({
                             content: `🎮 **Partida confirmada!** ${jogadoresMencao}`
                         });
 
-                        // Envia painel ephemeral (apenas cargos autorizados e owner podem ver)
-                        // Usamos um botão para que o usuário possa interagir, mas a mensagem é ephemeral
+                        // Mensagem ephemeral apenas para quem tem cargo
                         await canalPartida.send({
                             content: "🛠️ **Painel de Controle** (apenas cargos autorizados)",
                             components: [controlRow, controlRow2],
-                            ephemeral: true // ephemeral
+                            ephemeral: true
                         });
 
                         await interaction.editReply({ content: `✅ Partida confirmada! Canal criado: <#${canalPartida.id}>` });
@@ -316,20 +303,19 @@ module.exports = async (interaction) => {
                         await interaction.editReply({ content: "❌ Erro ao criar o canal de partida." });
                     }
                 } else {
-                    // Ainda não confirmaram todos
                     const faltam = qtd - novosConfirmados.length;
                     await interaction.editReply({ content: `✅ Você confirmou! Faltam ${faltam} jogador(es) confirmarem.` });
                 }
                 return;
             }
 
-            // ======== BOTÕES DO MEDIADOR (ephemeral) ========
+            // ======== BOTÕES DO MEDIADOR ========
             if (customId.startsWith("mediador_")) {
-                // Verifica permissão
-                const configReal = pegarConfig(); // configuração global (para cargos permitidos)
-                const cargosPermitidos = configReal.cargosPermitidos || [];
+                // Verifica permissão (usa cargos do config global)
+                const configGlobal = pegarConfig();
+                const cargosPermitidos = configGlobal.cargosPermitidos || [];
                 if (!temPermissaoMediador(interaction.member, cargosPermitidos)) {
-                    await interaction.reply({ content: "❌ Você não tem permissão para usar estes botões.", flags: MessageFlags.Ephemeral });
+                    await interaction.reply({ content: "❌ Você não tem permissão.", flags: MessageFlags.Ephemeral });
                     return;
                 }
 
@@ -344,7 +330,7 @@ module.exports = async (interaction) => {
                         .setCustomId(`modal_senha_${painelId}`)
                         .setTitle("Senha da Sala");
                     const input = new TextInputBuilder()
-                        .setCustomId("input_senha").setLabel("Digite a senha").setStyle(TextInputStyle.Short).setRequired(true);
+                        .setCustomId("input_senha").setLabel("Senha").setStyle(TextInputStyle.Short).setRequired(true);
                     modal.addComponents(new ActionRowBuilder().addComponents(input));
                     await interaction.showModal(modal);
                     return;
@@ -355,7 +341,7 @@ module.exports = async (interaction) => {
                         .setCustomId(`modal_codigo_${painelId}`)
                         .setTitle("Código da Sala");
                     const input = new TextInputBuilder()
-                        .setCustomId("input_codigo").setLabel("Digite o código").setStyle(TextInputStyle.Short).setRequired(true);
+                        .setCustomId("input_codigo").setLabel("Código").setStyle(TextInputStyle.Short).setRequired(true);
                     modal.addComponents(new ActionRowBuilder().addComponents(input));
                     await interaction.showModal(modal);
                     return;
@@ -364,7 +350,7 @@ module.exports = async (interaction) => {
                 if (customId === "mediador_cancelar") {
                     await filas.limparFilas(painelId);
                     filas.setMatchStatus(painelId, "cancelada");
-                    await interaction.reply({ content: "✅ Partida cancelada. Canal será deletado.", flags: MessageFlags.Ephemeral });
+                    await interaction.reply({ content: "✅ Partida cancelada.", flags: MessageFlags.Ephemeral });
                     setTimeout(async () => {
                         try { await interaction.channel.delete(); } catch (err) { console.error(err); }
                     }, 5000);
@@ -376,19 +362,19 @@ module.exports = async (interaction) => {
                     const listaInfinito = filas.jogadores("infinito", painelId);
                     const select = new StringSelectMenuBuilder()
                         .setCustomId(`select_vencedor_${painelId}`)
-                        .setPlaceholder("Escolha o vencedor")
+                        .setPlaceholder("Vencedor")
                         .addOptions(
-                            new StringSelectMenuOptionBuilder().setLabel("Time A (Normal)").setValue("normal"),
-                            new StringSelectMenuOptionBuilder().setLabel("Time B (Infinito)").setValue("infinito")
+                            new StringSelectMenuOptionBuilder().setLabel("Time Normal").setValue("normal"),
+                            new StringSelectMenuOptionBuilder().setLabel("Time Infinito").setValue("infinito")
                         );
-                    await interaction.reply({ content: "Escolha o time vencedor:", components: [new ActionRowBuilder().addComponents(select)], flags: MessageFlags.Ephemeral });
+                    await interaction.reply({ content: "Escolha o time:", components: [new ActionRowBuilder().addComponents(select)], flags: MessageFlags.Ephemeral });
                     return;
                 }
 
                 if (customId === "mediador_finalizar") {
                     await filas.limparFilas(painelId);
                     filas.setMatchStatus(painelId, "finalizada");
-                    await interaction.reply({ content: "🏁 Partida finalizada. Canal será deletado.", flags: MessageFlags.Ephemeral });
+                    await interaction.reply({ content: "🏁 Finalizada.", flags: MessageFlags.Ephemeral });
                     setTimeout(async () => {
                         try { await interaction.channel.delete(); } catch (err) { console.error(err); }
                     }, 3000);
@@ -400,7 +386,7 @@ module.exports = async (interaction) => {
                         .setCustomId(`modal_pagamento_${painelId}`)
                         .setTitle("Chave de Pagamento");
                     const input = new TextInputBuilder()
-                        .setCustomId("input_chave").setLabel("Digite a chave PIX").setStyle(TextInputStyle.Short).setRequired(true);
+                        .setCustomId("input_chave").setLabel("Chave PIX").setStyle(TextInputStyle.Short).setRequired(true);
                     modal.addComponents(new ActionRowBuilder().addComponents(input));
                     await interaction.showModal(modal);
                     return;
@@ -420,25 +406,25 @@ module.exports = async (interaction) => {
 
             if (modalType === 'senha') {
                 const senha = interaction.fields.getTextInputValue('input_senha');
-                await interaction.editReply({ content: `🔑 Senha definida: \`${senha}\`` });
+                await interaction.editReply({ content: `🔑 Senha: \`${senha}\`` });
             } else if (modalType === 'codigo') {
                 const codigo = interaction.fields.getTextInputValue('input_codigo');
                 await interaction.editReply({ content: `📟 Código: \`${codigo}\`` });
             } else if (modalType === 'pagamento') {
                 const chave = interaction.fields.getTextInputValue('input_chave');
-                await interaction.editReply({ content: `💰 Chave PIX: \`${chave}\`\n\nEnvie a imagem do QR code neste chat.` });
+                await interaction.editReply({ content: `💰 Chave PIX: \`${chave}\`\n\nEnvie a imagem do QR code.` });
             }
             return;
         }
 
-        // --- MENU DE VENCEDOR ---
+        // --- MENU VENCEDOR ---
         if (interaction.isStringSelectMenu() && interaction.customId.startsWith('select_vencedor_')) {
             if (!interaction.deferred && !interaction.replied) {
                 await interaction.deferReply({ flags: MessageFlags.Ephemeral });
             }
             const painelId = interaction.customId.replace('select_vencedor_', '');
             const vencedor = interaction.values[0];
-            await interaction.editReply({ content: `🏆 Vencedor: **${vencedor === 'normal' ? 'Time A (Normal)' : 'Time B (Infinito)'}**` });
+            await interaction.editReply({ content: `🏆 Vencedor: **${vencedor === 'normal' ? 'Time Normal' : 'Time Infinito'}**` });
             return;
         }
 

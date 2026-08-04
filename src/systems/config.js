@@ -13,13 +13,12 @@ function carregarConfig() {
         console.error("Erro ao carregar config:", err);
     }
     return {
-        nomePainel: "PHANTOM",
         modo: "Mobile",
         valor: "5,00",
-        quantidade: 1, // 1 = 1x1
+        quantidade: 1,
         emojiGel: null,
         emojiEmulador: null,
-        cargosPermitidos: [] // IDs dos cargos que podem ver o painel de mediador
+        cargosPermitidos: []
     };
 }
 

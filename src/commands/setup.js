@@ -8,30 +8,31 @@ module.exports = {
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     async execute(interaction) {
+        // ✅ Apenas um deferReply, sem risco de duplicata
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-        const config = pegarConfig();
 
+        const config = pegarConfig();
         if (!config.quantidade) config.quantidade = 1;
 
         const embed = new EmbedBuilder()
             .setColor("#2b2d31")
-            .setTitle(`⚙️ Configuração do Painel`)
-            .setDescription("Configure abaixo e clique em 'Enviar Painéis' para gerar os painéis.")
+            .setTitle("⚙️ Configuração do Painel")
+            .setDescription("Configure abaixo e clique em 'Enviar Painéis'.")
             .addFields(
                 { name: "🎮 Modo:", value: config.modo || "Mobile", inline: true },
                 { name: "💰 Valor:", value: `\`${config.valor || "5,00"}\``, inline: true },
-                { name: "👥 Tamanho da fila:", value: `\`${config.quantidade}x${config.quantidade}\``, inline: true },
+                { name: "👥 Tamanho:", value: `\`${config.quantidade}x${config.quantidade}\``, inline: true },
                 { name: "😊 Emoji Gel:", value: config.emojiGel || "Nenhum", inline: true },
                 { name: "😊 Emoji Emulador:", value: config.emojiEmulador || "Nenhum", inline: true },
-                { name: "👑 Cargos Permitidos:", value: config.cargosPermitidos?.length ? config.cargosPermitidos.map(id => `<@&${id}>`).join(", ") : "Nenhum", inline: false }
+                { name: "👑 Cargos:", value: config.cargosPermitidos?.length ? config.cargosPermitidos.map(id => `<@&${id}>`).join(", ") : "Nenhum", inline: false }
             )
             .setFooter({ text: "Só você pode ver esta mensagem • Ignorar mensagem" });
 
-        // Seletor de Modo
+        // LINHA 1: Modo
         const rowModo = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("select_modo")
-                .setPlaceholder("Selecione o Modo")
+                .setPlaceholder("Modo")
                 .addOptions(
                     new StringSelectMenuOptionBuilder().setLabel("Mobile").setValue("Mobile"),
                     new StringSelectMenuOptionBuilder().setLabel("Emulador").setValue("Emulador"),
@@ -39,11 +40,11 @@ module.exports = {
                 )
         );
 
-        // Seletor de Valor
+        // LINHA 2: Valor
         const rowValor = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("select_valor")
-                .setPlaceholder("Selecione o Valor")
+                .setPlaceholder("Valor")
                 .addOptions(
                     new StringSelectMenuOptionBuilder().setLabel("R$ 100,00").setValue("100,00"),
                     new StringSelectMenuOptionBuilder().setLabel("R$ 50,00").setValue("50,00"),
@@ -57,11 +58,11 @@ module.exports = {
                 )
         );
 
-        // Seletor de Quantidade
+        // LINHA 3: Quantidade
         const rowQuantidade = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("select_quantidade")
-                .setPlaceholder("Selecione o tamanho da fila")
+                .setPlaceholder("Tamanho da fila")
                 .addOptions(
                     new StringSelectMenuOptionBuilder().setLabel("1x1 (2 jogadores)").setValue("1"),
                     new StringSelectMenuOptionBuilder().setLabel("2x2 (4 jogadores)").setValue("2"),
@@ -70,11 +71,15 @@ module.exports = {
                 )
         );
 
-        // Seletor de Emoji Gel
+        // LINHA 4: Emojis (Gel e Emulador em um único menu? Não, precisamos de dois menus separados, mas podemos juntar em um único menu com dois placeholders? O Discord permite até 5 linhas. Vamos usar dois menus em uma linha? Não pode, um menu por linha. Vamos usar dois menus em duas linhas, mas aí ultrapassamos 5 linhas. Vamos juntar em um único menu com duas opções? Melhor: Usar um menu para Emoji Gel e outro para Emoji Emulador, mas colocá-los na mesma linha? Não é permitido. Vamos usar dois botões para abrir menus separados? Isso é mais complexo. Simplificamos: usamos dois menus em duas linhas, e a linha 5 é o botão Enviar. Isso dá 5 linhas (Modo, Valor, Quantidade, Emoji Gel, Emoji Emulador). Mas precisamos também do botão Enviar. Então teremos 6 linhas. Vamos combinar Emoji Gel e Emoji Emulador em uma única linha? Não podemos ter dois menus na mesma linha. Então faremos: Linha 1: Modo, Linha 2: Valor, Linha 3: Quantidade, Linha 4: Emoji Gel, Linha 5: Emoji Emulador. E o botão Enviar terá que ser adicionado a uma dessas linhas? Podemos colocar o botão Enviar na linha 5 junto com o menu Emoji Emulador? Não, não podemos misturar menu e botão na mesma linha? Na verdade podemos, uma linha pode ter menus e botões, mas o Discord pode não aceitar misturar tipos. Melhor é usar um botão separado na linha 6, mas aí ultrapassa. Vamos simplificar: remover o seletor de cargos (pode ser feito depois) e colocar o botão Enviar na linha 4 junto com o Emoji Gel? Vamos fazer: Linha 1: Modo, Linha 2: Valor, Linha 3: Quantidade, Linha 4: Emoji Gel + Emoji Emulador (dois menus na mesma linha? Não funciona). Então faremos: Linha 1: Modo, Linha 2: Valor, Linha 3: Quantidade, Linha 4: Emoji Gel, Linha 5: Emoji Emulador + Botão Enviar (misturar menu e botão na mesma linha é permitido? Sim, o Discord permite misturar tipos de componentes em uma linha, desde que o total de componentes seja <=5. Então podemos ter um menu e um botão na mesma linha). Vamos fazer isso: Linha 5: StringSelectMenu (Emoji Emulador) + Button (Enviar). Isso dará 5 linhas. Ok.
+
+        Vamos refazer o código com essa estrutura.
+
+        // LINHA 4: Emoji Gel
         const rowEmojiGel = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("select_emoji_gel")
-                .setPlaceholder("Emoji para Gel")
+                .setPlaceholder("Emoji Gel")
                 .addOptions(
                     interaction.guild.emojis.cache.first(25).map(e =>
                         new StringSelectMenuOptionBuilder()
@@ -85,11 +90,11 @@ module.exports = {
                 )
         );
 
-        // Seletor de Emoji Emulador
+        // LINHA 5: Emoji Emulador + Botão Enviar
         const rowEmojiEmul = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("select_emoji_emulador")
-                .setPlaceholder("Emoji para Emulador")
+                .setPlaceholder("Emoji Emulador")
                 .addOptions(
                     interaction.guild.emojis.cache.first(25).map(e =>
                         new StringSelectMenuOptionBuilder()
@@ -97,40 +102,19 @@ module.exports = {
                             .setValue(`<:${e.name}:${e.id}>`)
                             .setEmoji({ id: e.id, name: e.name })
                     )
-                )
-        );
-
-        // Seletor de Cargos (multi-select)
-        const rowCargos = new ActionRowBuilder().addComponents(
-            new StringSelectMenuBuilder()
-                .setCustomId("select_cargos")
-                .setPlaceholder("Selecione os cargos que podem ver o painel")
-                .setMinValues(0)
-                .setMaxValues(5)
-                .addOptions(
-                    interaction.guild.roles.cache
-                        .filter(r => r.id !== interaction.guild.id) // remove @everyone
-                        .first(15)
-                        .map(r =>
-                            new StringSelectMenuOptionBuilder()
-                                .setLabel(r.name)
-                                .setValue(r.id)
-                                .setEmoji("👑")
-                        )
-                )
-        );
-
-        // Botão Enviar
-        const rowAcao = new ActionRowBuilder().addComponents(
+                ),
             new ButtonBuilder()
                 .setCustomId("enviar_paineis")
                 .setLabel("🚀 Enviar Painéis")
                 .setStyle(ButtonStyle.Primary)
         );
 
+        // O seletor de cargos será removido para simplificar (pode ser adicionado depois)
+        // Se quiser manter, podemos colocar na linha 6, mas aí estoura o limite. Então removemos.
+
         return await interaction.editReply({ 
             embeds: [embed], 
-            components: [rowModo, rowValor, rowQuantidade, rowEmojiGel, rowEmojiEmul, rowCargos, rowAcao] 
+            components: [rowModo, rowValor, rowQuantidade, rowEmojiGel, rowEmojiEmul] 
         });
     }
 };

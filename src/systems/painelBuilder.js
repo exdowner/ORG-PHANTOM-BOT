@@ -16,14 +16,11 @@ module.exports = (config, filaNormal, filaInfinito, confirmados = []) => {
         .setThumbnail(urlImagem)
         .setFooter({ text: "ORG PHANTOM | Sistema de Partidas" });
 
-    const row = new ActionRowBuilder();
-
-    // Determina se é misto, emulador ou mobile
+    // Determina os nomes e emojis baseados no modo
     const modoLower = (config.modo || "mobile").toLowerCase();
     const isMisto = modoLower === "misto";
     const isEmulador = modoLower === "emulador";
 
-    // Nomes e emojis
     let nomeFila1, nomeFila2, emoji1, emoji2;
     if (isMisto || isEmulador) {
         nomeFila1 = "1 Emulador";
@@ -43,25 +40,25 @@ module.exports = (config, filaNormal, filaInfinito, confirmados = []) => {
         { name: `${nomeFila2} (${filaInfinito.length}/${qtd})`, value: formatar(filaInfinito), inline: false }
     );
 
-    // Botões
-    row.addComponents(
-        new ButtonBuilder()
-            .setCustomId("entrar_fila1")
-            .setLabel(nomeFila1)
-            .setEmoji(emoji1)
-            .setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder()
-            .setCustomId("entrar_fila2")
-            .setLabel(nomeFila2)
-            .setEmoji(emoji2)
-            .setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder()
-            .setCustomId("sair_fila")
-            .setLabel("Sair")
-            .setStyle(ButtonStyle.Danger)
-    );
+    const row = new ActionRowBuilder()
+        .addComponents(
+            new ButtonBuilder()
+                .setCustomId("entrar_fila1")
+                .setLabel(nomeFila1)
+                .setEmoji(emoji1)
+                .setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder()
+                .setCustomId("entrar_fila2")
+                .setLabel(nomeFila2)
+                .setEmoji(emoji2)
+                .setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder()
+                .setCustomId("sair_fila")
+                .setLabel("Sair")
+                .setStyle(ButtonStyle.Danger)
+        );
 
-    // Botão Confirmar - mostra progresso
+    // Botão confirmar progressivo
     const totalJogadores = filaNormal.length + filaInfinito.length;
     const confirmadosCount = confirmados.length;
     if (totalJogadores >= qtd) {
@@ -72,7 +69,7 @@ module.exports = (config, filaNormal, filaInfinito, confirmados = []) => {
                 .setCustomId("confirmar_partida")
                 .setLabel(label)
                 .setStyle(isComplete ? ButtonStyle.Success : ButtonStyle.Primary)
-                .setDisabled(isComplete) // desabilita quando já confirmaram todos
+                .setDisabled(isComplete)
         );
     }
 
