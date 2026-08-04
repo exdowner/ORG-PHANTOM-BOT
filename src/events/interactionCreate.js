@@ -1,4 +1,4 @@
-const { EmbedBuilder, MessageFlags, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ChannelType, PermissionFlagsBits } = require("discord.js");
+const { EmbedBuilder, MessageFlags, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, ChannelType, PermissionFlagsBits } = require("discord.js");
 const filas = require("../systems/filas.js");
 const painelBuilder = require("../systems/painelBuilder.js");
 const configModule = require("../systems/config.js");
@@ -17,7 +17,9 @@ function gerarEmbedEditor(config) {
             `**Misto:** ${config.misto ? "✅ ATIVADO" : "❌ DESATIVADO"}\n\n` +
             `${config.emojiGelNormal || "🧊"} **Gel Normal**\n` +
             `${config.emojiGelInfinito || "♾️"} **Gel Infinito**\n` +
-            `🚪 **Sair**\n\n` +
+            `${config.emojiEmu1 || "📱"} **1 Emulador**\n` +
+            `${config.emojiEmu2 || "💻"} **2 Emuladores**\n` +
+            `${config.emojiSair || "🚪"} **Sair**\n\n` +
             `*As mudanças aparecem aqui em tempo real*`
         );
 }
@@ -34,7 +36,7 @@ module.exports = async (interaction) => {
             return;
         }
 
-        // --- BOTÕES DO SETUP (LAYOUT DA IMAGEM) ---
+        // --- BOTÕES DO SETUP ---
         if (interaction.isButton()) {
             const { customId, message } = interaction;
 
@@ -45,7 +47,7 @@ module.exports = async (interaction) => {
 
                 const row1 = message.components[0];
                 const row2 = ActionRowBuilder.from(message.components[1]);
-                row2.components[1].setLabel(config.misto ? " Desativar Misto" : "🔀 Ativar Misto");
+                row2.components[1].setLabel(config.misto ? "Desativar Misto" : "🔀 Ativar Misto");
 
                 await interaction.update({
                     embeds: [gerarEmbedEditor(config)],
@@ -84,7 +86,7 @@ module.exports = async (interaction) => {
                 return;
             }
 
-            // 5. MODAL DE EMOJIS (AQUI VOCÊ PODE REPETIR O MESMO EMOJI!)
+            // 5. MODAL DE EMOJIS (5 EMOJIS PERSONALIZADOS DO SERVIDOR)
             if (customId === "btn_setup_emojis") {
                 const modal = new ModalBuilder().setCustomId("modal_editor_emojis").setTitle("Configurar Emojis");
                 modal.addComponents(
@@ -93,30 +95,30 @@ module.exports = async (interaction) => {
                     ),
                     new ActionRowBuilder().addComponents(
                         new TextInputBuilder().setCustomId("input_gel_infinito").setLabel("Emoji Gel Infinito").setStyle(TextInputStyle.Short).setValue(config.emojiGelInfinito || "♾️").setRequired(true)
+                    ),
+                    new ActionRowBuilder().addComponents(
+                        new TextInputBuilder().setCustomId("input_emu1").setLabel("Emoji 1 Emulador").setStyle(TextInputStyle.Short).setValue(config.emojiEmu1 || "📱").setRequired(true)
+                    ),
+                    new ActionRowBuilder().addComponents(
+                        new TextInputBuilder().setCustomId("input_emu2").setLabel("Emoji 2 Emuladores").setStyle(TextInputStyle.Short).setValue(config.emojiEmu2 || "💻").setRequired(true)
+                    ),
+                    new ActionRowBuilder().addComponents(
+                        new TextInputBuilder().setCustomId("input_sair").setLabel("Emoji Botão Sair").setStyle(TextInputStyle.Short).setValue(config.emojiSair || "🚪").setRequired(true)
                     )
                 );
                 await interaction.showModal(modal);
                 return;
             }
 
-            // 6. SALVAR E ENVIAR PAINEL DEFINITIVO
+            // 6. APENAS SALVAR A CONFIGURAÇÃO
             if (customId === "btn_setup_salvar") {
                 salvarConfig(config);
-                const painel = painelBuilder(config, [], []);
-
-                try {
-                    const msg = await interaction.channel.send({ embeds: painel.embeds, components: painel.components });
-                    filas.setConfig(msg.id, config);
-                    await interaction.reply({ content: "✅ Painel publicado com sucesso no canal!", flags: MessageFlags.Ephemeral });
-                } catch (err) {
-                    console.error("Erro ao publicar painel:", err);
-                    await interaction.reply({ content: "❌ Erro ao postar o painel no canal.", flags: MessageFlags.Ephemeral });
-                }
+                await interaction.reply({ content: "✅ Configurações salvas com sucesso! Para enviar os painéis, use o comando `/setupenvia`.", flags: MessageFlags.Ephemeral });
                 return;
             }
         }
 
-        // --- PROCESSAMENTO DOS MODAIS (ATUALIZAÇÃO EM TEMPO REAL) ---
+        // --- SUBMISSÃO DOS MODAIS ---
         if (interaction.isModalSubmit()) {
             const { customId, fields } = interaction;
 
@@ -128,9 +130,11 @@ module.exports = async (interaction) => {
                 const parsed = parseInt(fields.getTextInputValue("input_qtd"));
                 config.quantidade = isNaN(parsed) ? 1 : parsed;
             } else if (customId === "modal_editor_emojis") {
-                // Aqui você pode colá o MESMO emoji nos dois campos se quiser!
                 config.emojiGelNormal = fields.getTextInputValue("input_gel_normal");
                 config.emojiGelInfinito = fields.getTextInputValue("input_gel_infinito");
+                config.emojiEmu1 = fields.getTextInputValue("input_emu1");
+                config.emojiEmu2 = fields.getTextInputValue("input_emu2");
+                config.emojiSair = fields.getTextInputValue("input_sair");
             }
 
             salvarConfig(config);

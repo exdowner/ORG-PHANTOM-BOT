@@ -20,7 +20,9 @@ module.exports = {
                 `**Misto:** ${config.misto ? "✅ ATIVADO" : "❌ DESATIVADO"}\n\n` +
                 `${config.emojiGelNormal || "🧊"} **Gel Normal**\n` +
                 `${config.emojiGelInfinito || "♾️"} **Gel Infinito**\n` +
-                `🚪 **Sair**\n\n` +
+                `${config.emojiEmu1 || "📱"} **1 Emulador**\n` +
+                `${config.emojiEmu2 || "💻"} **2 Emuladores**\n` +
+                `${config.emojiSair || "🚪"} **Sair**\n\n` +
                 `*As mudanças aparecem aqui em tempo real*`
             );
 
@@ -32,7 +34,7 @@ module.exports = {
 
         const row2 = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId("btn_setup_emojis").setLabel("Emojis").setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder().setCustomId("btn_setup_misto").setLabel(config.misto ? " Desativar Misto" : "🔀 Ativar Misto").setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId("btn_setup_misto").setLabel(config.misto ? "Desativar Misto" : "🔀 Ativar Misto").setStyle(ButtonStyle.Success),
             new ButtonBuilder().setCustomId("btn_setup_salvar").setLabel("Salvar").setStyle(ButtonStyle.Success)
         );
 
