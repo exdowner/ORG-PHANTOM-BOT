@@ -284,13 +284,13 @@ module.exports = async (interaction) => {
                 }
             }
 
-            // ================== LÓGICA DAS FILAS (FALLBACK INTELIGENTE) ==================
+            // ================== LÓGICA DAS FILAS (ENTRAR / SAIR) COM MAPEAMENTO EXPLÍCITO ==================
             if (customId.startsWith("entrar_") || customId === "sair_fila") {
                 const painelId = message.id;
 
                 let configReal = filas.getConfig(painelId);
 
-                // Se não houver configuração salva, extraímos dos botões e do embed
+                // Fallback silencioso (caso o bot tenha reiniciado)
                 if (!configReal) {
                     console.log(`🔁 [RECUPERAÇÃO] Painel ${painelId} sem configuração. Extraindo dos botões...`);
 
@@ -301,17 +301,8 @@ module.exports = async (interaction) => {
 
                     let modoDetectado = "Mobile";
                     let mistoDetectado = false;
+                    const emojisExtraidos = { emojiGelNormal: null, emojiGelInfinito: null, emojiEmul1: null, emojiEmul2: null, emojiSair: null };
 
-                    // Mapeamento dos emojis extraídos dos botões
-                    const emojisExtraidos = {
-                        emojiGelNormal: null,
-                        emojiGelInfinito: null,
-                        emojiEmul1: null,
-                        emojiEmul2: null,
-                        emojiSair: null
-                    };
-
-                    // Itera sobre todos os botões do painel
                     const row = message.components?.[0];
                     if (row) {
                         const botoes = row.components || [];
@@ -319,62 +310,29 @@ module.exports = async (interaction) => {
                             if (!btn) continue;
                             const label = btn.label || "";
                             const emoji = btn.emoji ? btn.emoji.toString() : null;
-
-                            // Detecta modo e misto pelo label e estilo
                             if (label.includes("Emulador")) {
                                 modoDetectado = "Emulador";
-                                if (btn.style === ButtonStyle.Success) {
-                                    mistoDetectado = true;
-                                }
+                                if (btn.style === ButtonStyle.Success) mistoDetectado = true;
                             } else if (label.includes("Gel")) {
                                 modoDetectado = "Mobile";
                                 mistoDetectado = false;
                             }
-
-                            // Mapeia os emojis
-                            if (label.includes("Gel Normal")) {
-                                emojisExtraidos.emojiGelNormal = emoji;
-                            } else if (label.includes("Gel Infinito")) {
-                                emojisExtraidos.emojiGelInfinito = emoji;
-                            } else if (label.includes("1 Emulador")) {
-                                emojisExtraidos.emojiEmul1 = emoji;
-                            } else if (label.includes("2 Emuladores")) {
-                                emojisExtraidos.emojiEmul2 = emoji;
-                            } else if (label === "Sair") {
-                                emojisExtraidos.emojiSair = emoji;
-                            }
+                            if (label.includes("Gel Normal")) emojisExtraidos.emojiGelNormal = emoji;
+                            else if (label.includes("Gel Infinito")) emojisExtraidos.emojiGelInfinito = emoji;
+                            else if (label.includes("1 Emulador")) emojisExtraidos.emojiEmul1 = emoji;
+                            else if (label.includes("2 Emuladores")) emojisExtraidos.emojiEmul2 = emoji;
+                            else if (label === "Sair") emojisExtraidos.emojiSair = emoji;
                         }
                     }
 
-                    const configFallback = {
-                        modoMisto: mistoDetectado,
-                        modo: modoDetectado,
-                        valor: valor,
-                        nomePainel: nomePainel,
-                        ...emojisExtraidos,
-                        quantidade: 1 // padrão, pode ser ajustado se necessário
-                    };
-
-                    // Salva a configuração recuperada para nunca mais perder
+                    const configFallback = { modoMisto: mistoDetectado, modo: modoDetectado, valor, nomePainel, ...emojisExtraidos, quantidade: 1 };
                     filas.setConfig(painelId, configFallback);
                     configReal = filas.getConfig(painelId);
                 }
 
-                // Se ainda assim não tiver, fallback genérico (nunca mostra erro)
                 if (!configReal) {
-                    console.error(`❌ ERRO CRÍTICO: Painel ${painelId} não pode ser recuperado. Usando fallback genérico.`);
-                    configReal = {
-                        modoMisto: false,
-                        modo: "Mobile",
-                        valor: "20,00",
-                        nomePainel: "PHANTOM",
-                        emojiGelNormal: null,
-                        emojiGelInfinito: null,
-                        emojiEmul1: null,
-                        emojiEmul2: null,
-                        emojiSair: null,
-                        quantidade: 1
-                    };
+                    console.error(`❌ ERRO CRÍTICO: Painel ${painelId} não pode ser recuperado.`);
+                    configReal = { modoMisto: false, modo: "Mobile", valor: "20,00", nomePainel: "PHANTOM", emojiGelNormal: null, emojiGelInfinito: null, emojiEmul1: null, emojiEmul2: null, emojiSair: null, quantidade: 1 };
                 }
 
                 const isMisto = configReal.modoMisto === true;
@@ -382,13 +340,18 @@ module.exports = async (interaction) => {
 
                 let tipoFila = customId.replace("entrar_", "");
                 let nomeFila = tipoFila;
+
+                // 🔥 CORREÇÃO EXPLÍCITA AQUI: Mapeia exatamente para as chaves do filas.js
                 if (tipoFila === "gel_normal") nomeFila = "normal";
                 else if (tipoFila === "gel_inf") nomeFila = "infinito";
+                else if (tipoFila === "1emulador") nomeFila = "1emulador"; // Garantido
+                else if (tipoFila === "2emuladores") nomeFila = "2emuladores"; // Garantido
 
                 if (customId === "sair_fila") {
                     filas.sairFila(painelId, user);
                 } else {
                     const resultado = filas.entrarFila(painelId, nomeFila, user);
+                    console.log(`✅ [DEBUG] Entrando na fila: ${nomeFila} | Resultado: ${resultado.ok ? 'Sucesso' : 'Falha'}`);
                     if (!resultado.ok) {
                         return await interaction.editReply({ content: resultado.motivo });
                     }
