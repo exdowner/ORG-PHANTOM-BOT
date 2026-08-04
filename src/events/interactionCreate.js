@@ -13,9 +13,14 @@ const configModule = require("../systems/config.js");
 const pegarConfig = configModule.pegarConfig || (() => ({}));
 const salvarConfig = configModule.salvarConfig || (() => ({}));
 
+// Proteção global contra erros não tratados (evita que o bot morra)
+process.on('unhandledRejection', (err) => {
+    console.error('🚨 Erro não tratado:', err);
+});
+
 module.exports = async (interaction) => {
     try {
-        // ----- COMANDOS SLASH -----
+        // --- COMANDOS SLASH ---
         if (interaction.isChatInputCommand()) {
             const command = interaction.client.commands.get(interaction.commandName);
             if (!command) return;
@@ -23,28 +28,38 @@ module.exports = async (interaction) => {
                 await command.execute(interaction);
             } catch (error) {
                 console.error(`Erro em /${interaction.commandName}:`, error);
+                // Tenta responder de forma segura
                 const msg = { content: "❌ Erro ao executar comando!", flags: MessageFlags.Ephemeral };
-                if (interaction.replied || interaction.deferred) await interaction.followUp(msg);
-                else await interaction.reply(msg);
+                if (!interaction.replied && !interaction.deferred) {
+                    await interaction.reply(msg);
+                } else {
+                    await interaction.followUp(msg);
+                }
             }
             return;
         }
 
-        // ----- MENUS DE SELEÇÃO (Valor e Quantidade) -----
+        // --- MENUS DE SELEÇÃO (Valor e Quantidade) ---
         if (interaction.isStringSelectMenu()) {
-            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+            // Só faz o defer se não tiver sido deferido ainda
+            if (!interaction.deferred && !interaction.replied) {
+                await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+            }
             const config = pegarConfig();
             const valor = interaction.values[0];
 
             if (interaction.customId === "select_valor") {
                 config.valor = valor;
+                salvarConfig(config);
             } else if (interaction.customId === "select_quantidade") {
                 const qtd = parseInt(valor);
-                if (!isNaN(qtd) && qtd > 0) config.quantidade = qtd;
+                if (!isNaN(qtd) && qtd > 0) {
+                    config.quantidade = qtd;
+                    salvarConfig(config);
+                }
             }
 
-            salvarConfig(config);
-
+            // Atualiza o preview do /setup
             const msgOriginal = interaction.message;
             if (msgOriginal && msgOriginal.embeds.length > 0) {
                 const embed = EmbedBuilder.from(msgOriginal.embeds[0]);
@@ -53,19 +68,31 @@ module.exports = async (interaction) => {
                 } else {
                     embed.spliceFields(1, 1, { name: "👥 Tamanho da fila:", value: `\`${config.quantidade}x${config.quantidade}\``, inline: true });
                 }
-                await msgOriginal.edit({ embeds: [embed] });
+                try {
+                    await msgOriginal.edit({ embeds: [embed] });
+                } catch (err) {
+                    console.error("Erro ao atualizar preview do /setup:", err);
+                }
             }
 
-            return await interaction.editReply({ content: "✅ Configuração atualizada!" });
+            try {
+                await interaction.editReply({ content: "✅ Configuração atualizada!" });
+            } catch (err) {
+                console.error("Erro ao responder ao menu:", err);
+            }
+            return;
         }
 
-        // ----- BOTÕES -----
+        // --- BOTÕES ---
         if (interaction.isButton()) {
             const { customId, user, guild, message } = interaction;
 
-            // ----- BOTÃO "ENVIAR PAINÉIS" (do /setup) -----
+            // --- BOTÃO "ENVIAR PAINÉIS" (do /setup) ---
             if (customId === "enviar_paineis") {
-                await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+                // Só faz o defer se necessário
+                if (!interaction.deferred && !interaction.replied) {
+                    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+                }
                 const configBase = pegarConfig();
                 if (!configBase.quantidade) configBase.quantidade = 1;
 
@@ -90,12 +117,20 @@ module.exports = async (interaction) => {
                     await new Promise(resolve => setTimeout(resolve, 500));
                 }
 
-                return await interaction.editReply({ content: `✅ ${enviados} painéis enviados!` });
+                try {
+                    await interaction.editReply({ content: `✅ ${enviados} painéis enviados!` });
+                } catch (err) {
+                    console.error("Erro ao responder ao botão enviar painéis:", err);
+                }
+                return;
             }
 
-            // ----- BOTÕES DO PAINEL DE FILA (Entrar / Sair) -----
+            // --- BOTÕES DO PAINEL DE FILA (Entrar / Sair) ---
             if (customId === "entrar_fila" || customId === "sair_fila") {
-                await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+                // Só defer se necessário
+                if (!interaction.deferred && !interaction.replied) {
+                    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+                }
 
                 const painelId = message.id;
 
@@ -114,36 +149,52 @@ module.exports = async (interaction) => {
                 if (customId === "entrar_fila") {
                     const resultado = filas.entrarFila(painelId, "normal", user);
                     if (!resultado.ok) {
-                        return await interaction.editReply({ content: resultado.motivo });
+                        try {
+                            await interaction.editReply({ content: resultado.motivo });
+                        } catch (err) {
+                            console.error("Erro ao responder erro de entrada:", err);
+                        }
+                        return;
                     }
                 } else if (customId === "sair_fila") {
                     filas.sairFila(painelId, user);
                 }
 
-                // Atualiza o painel público (agora recebe apenas uma lista)
+                // Atualiza o painel público
                 const lista = filas.jogadores("normal", painelId);
                 const novoPainel = painelBuilder(configReal, lista);
 
+                // Tenta editar a mensagem do painel (com proteção contra mensagem deletada)
                 try {
                     await message.edit(novoPainel);
                 } catch (err) {
-                    console.error("Erro ao editar painel:", err);
-                    setTimeout(async () => {
-                        try {
-                            await message.edit(novoPainel);
-                        } catch (e) {}
-                    }, 1000);
+                    console.error("Erro ao editar painel (possivelmente mensagem deletada):", err);
+                    // Se não conseguir editar, tenta enviar um novo painel (opcional)
+                    try {
+                        await interaction.channel.send({
+                            embeds: novoPainel.embeds,
+                            components: novoPainel.components
+                        });
+                    } catch (sendErr) {
+                        console.error("Erro ao reenviar painel:", sendErr);
+                    }
                 }
 
-                if (customId === "sair_fila") {
-                    return await interaction.editReply({ content: `🚪 <@${user.id}>, saiu da fila!` });
-                } else {
-                    return await interaction.editReply({ content: `✅ <@${user.id}>, entrou na fila!` });
+                // Responde ao usuário
+                const resposta = customId === "sair_fila" 
+                    ? `🚪 <@${user.id}>, saiu da fila!` 
+                    : `✅ <@${user.id}>, entrou na fila!`;
+                try {
+                    await interaction.editReply({ content: resposta });
+                } catch (err) {
+                    console.error("Erro ao responder ao jogador:", err);
                 }
+                return;
             }
         }
     } catch (err) {
         console.error("Erro geral na interação:", err);
+        // Último recurso: tenta responder algo para não deixar o bot travado
         if (!interaction.replied && !interaction.deferred) {
             try {
                 await interaction.reply({ content: "❌ Ocorreu um erro inesperado.", flags: MessageFlags.Ephemeral });
