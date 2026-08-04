@@ -1,10 +1,10 @@
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, MessageFlags, PermissionFlagsBits } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags, PermissionFlagsBits } = require("discord.js");
 const { pegarConfig } = require("../systems/config.js");
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName("setup")
-        .setDescription("Painel de configuração das filas.")
+        .setDescription("Abre o editor de painéis em tempo real.")
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     async execute(interaction) {
@@ -12,62 +12,34 @@ module.exports = {
 
         const embed = new EmbedBuilder()
             .setColor("#2b2d31")
-            .setTitle("⚙️ Painel de Configuração | ORG PHANTOM")
+            .setTitle("ORG PHANTOM | Editor (Preview ao Vivo)")
             .setDescription(
-                "1️⃣ Escolha o **Modo** e o **Valor** nos menus.\n" +
-                "2️⃣ Clique no botão do emoji que deseja configurar para abrir o seletor dele.\n" +
-                "3️⃣ Clique nos botões de envio para publicar os painéis."
-            )
-            .addFields(
-                { name: "🎮 Modo", value: `\`${config.modo || "Mobile"}\``, inline: true },
-                { name: "💰 Valor", value: `\`R$ ${config.valor || "5,00"}\``, inline: true },
-                { name: "👥 Tamanho", value: `\`${(config.quantidade || 1) * 2} Players\``, inline: true },
-                { name: "🧊 Gel Normal", value: config.emojiGelNormal || "🧊", inline: true },
-                { name: "♾️ Gel Infinito", value: config.emojiGelInfinito || "♾️", inline: true },
-                { name: "📱 1 Emulador", value: config.emojiEmu1 || "📱", inline: true },
-                { name: "💻 2 Emuladores", value: config.emojiEmu2 || "💻", inline: true }
-            )
-            .setFooter({ text: "ORG PHANTOM | Sistema de Filas" });
+                `**Modo:** ${config.modo || "mobile"}\n` +
+                `**Valor:** ${config.valor || "20,00"}\n` +
+                `**Quantidade:** ${(config.quantidade || 1) * 2} jogadores\n` +
+                `**Misto:** ${config.misto ? "✅ ATIVADO" : "❌ DESATIVADO"}\n\n` +
+                `${config.emojiGelNormal || "🧊"} **Gel Normal**\n` +
+                `${config.emojiGelInfinito || "♾️"} **Gel Infinito**\n` +
+                `🚪 **Sair**\n\n` +
+                `*As mudanças aparecem aqui em tempo real*`
+            );
 
         const row1 = new ActionRowBuilder().addComponents(
-            new StringSelectMenuBuilder()
-                .setCustomId("select_modo")
-                .setPlaceholder("📌 Selecionar Modo da Partida")
-                .addOptions(
-                    { label: "Mobile", value: "Mobile" },
-                    { label: "Emulador", value: "Emulador" },
-                    { label: "Misto", value: "Misto" }
-                )
+            new ButtonBuilder().setCustomId("btn_setup_valor").setLabel("Valor").setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId("btn_setup_modo").setLabel("Modo").setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId("btn_setup_quantidade").setLabel("Quantidade").setStyle(ButtonStyle.Secondary)
         );
 
         const row2 = new ActionRowBuilder().addComponents(
-            new StringSelectMenuBuilder()
-                .setCustomId("select_valor")
-                .setPlaceholder("💵 Selecionar Valor da Entrada")
-                .addOptions(
-                    ["100,00", "50,00", "20,00", "10,00", "5,00", "3,00", "2,00", "1,00", "0,50"].map(v => ({
-                        label: `R$ ${v}`,
-                        value: v
-                    }))
-                )
+            new ButtonBuilder().setCustomId("btn_setup_emojis").setLabel("Emojis").setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId("btn_setup_misto").setLabel(config.misto ? " Desativar Misto" : "🔀 Ativar Misto").setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId("btn_setup_salvar").setLabel("Salvar").setStyle(ButtonStyle.Success)
         );
 
-        const row3 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId("edit_gel_normal").setLabel("Gel Normal").setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder().setCustomId("edit_gel_infinito").setLabel("Gel Infinito").setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder().setCustomId("edit_emu1").setLabel("1 Emu").setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder().setCustomId("edit_emu2").setLabel("2 Emus").setStyle(ButtonStyle.Secondary)
-        );
-
-        const row4 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId("enviar_unico").setLabel("🚀 Enviar Apenas Este Painel").setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId("enviar_todos_valores").setLabel("📦 Enviar Pack Completo (100 a 0,50)").setStyle(ButtonStyle.Primary)
-        );
-
-        await interaction.reply({ 
-            embeds: [embed], 
-            components: [row1, row2, row3, row4], 
-            flags: MessageFlags.Ephemeral 
+        await interaction.reply({
+            embeds: [embed],
+            components: [row1, row2],
+            flags: MessageFlags.Ephemeral
         });
     }
 };

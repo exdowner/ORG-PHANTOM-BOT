@@ -1,9 +1,26 @@
-const { EmbedBuilder, MessageFlags, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ChannelType, PermissionFlagsBits } = require("discord.js");
+const { EmbedBuilder, MessageFlags, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ChannelType, PermissionFlagsBits } = require("discord.js");
 const filas = require("../systems/filas.js");
 const painelBuilder = require("../systems/painelBuilder.js");
 const configModule = require("../systems/config.js");
 const pegarConfig = configModule.pegarConfig || (() => ({}));
 const salvarConfig = configModule.salvarConfig || (() => ({}));
+
+// Função auxiliar para atualizar a embed do setup em tempo real
+function gerarEmbedEditor(config) {
+    return new EmbedBuilder()
+        .setColor("#2b2d31")
+        .setTitle("ORG PHANTOM | Editor (Preview ao Vivo)")
+        .setDescription(
+            `**Modo:** ${config.modo || "mobile"}\n` +
+            `**Valor:** ${config.valor || "20,00"}\n` +
+            `**Quantidade:** ${(config.quantidade || 1) * 2} jogadores\n` +
+            `**Misto:** ${config.misto ? "✅ ATIVADO" : "❌ DESATIVADO"}\n\n` +
+            `${config.emojiGelNormal || "🧊"} **Gel Normal**\n` +
+            `${config.emojiGelInfinito || "♾️"} **Gel Infinito**\n` +
+            `🚪 **Sair**\n\n` +
+            `*As mudanças aparecem aqui em tempo real*`
+        );
+}
 
 module.exports = async (interaction) => {
     try {
@@ -13,397 +30,118 @@ module.exports = async (interaction) => {
         if (interaction.isChatInputCommand()) {
             const command = interaction.client.commands.get(interaction.commandName);
             if (!command) return;
-            try {
-                await command.execute(interaction);
-            } catch (error) {
-                console.error(`Erro em /${interaction.commandName}:`, error);
-                if (!interaction.replied && !interaction.deferred) {
-                    await interaction.reply({ content: "❌ Erro ao executar comando!", flags: MessageFlags.Ephemeral });
-                } else {
-                    await interaction.followUp({ content: "❌ Erro ao executar comando!", flags: MessageFlags.Ephemeral });
-                }
-            }
+            await command.execute(interaction);
             return;
         }
 
-        // --- MENU VENCEDOR DO MEDIADOR ---
-        if (interaction.isStringSelectMenu() && interaction.customId.startsWith('select_vencedor_')) {
-            if (!interaction.deferred && !interaction.replied) {
-                await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-            }
-            const vencedor = interaction.values[0];
-            await interaction.editReply({ content: `🏆 Vencedor registrado: **${vencedor === 'normal' ? 'Time Normal / A' : 'Time Infinito / B'}**` });
-            return;
-        }
+        // --- BOTÕES DO SETUP (LAYOUT DA IMAGEM) ---
+        if (interaction.isButton()) {
+            const { customId, message } = interaction;
 
-        // --- SELETORES DE EMOJI DINÂMICOS (POR CAMPO) ---
-        if (interaction.isStringSelectMenu() && interaction.customId.startsWith("set_emoji_")) {
-            if (!interaction.deferred && !interaction.replied) {
-                await interaction.deferUpdate();
-            }
-
-            const campo = interaction.customId.replace("set_emoji_", ""); // ex: emojiGelNormal
-            const emojiId = interaction.values[0];
-
-            if (emojiId !== "none") {
-                const emojiObj = interaction.guild.emojis.cache.get(emojiId);
-                if (emojiObj) {
-                    config[campo] = `<:${emojiObj.name}:${emojiObj.id}>`;
-                    salvarConfig(config);
-                }
-            }
-
-            // Atualiza o painel principal
-            const msgOriginal = interaction.message.reference ? await interaction.channel.messages.fetch(interaction.message.reference.messageId).catch(() => null) : null;
-            
-            // Apaga o aviso temporário de seleção
-            await interaction.deleteReply().catch(() => {});
-
-            return;
-        }
-
-        // --- SELETORES DO SETUP (MODO / VALOR) ---
-        if (interaction.isStringSelectMenu()) {
-            if (["select_modo", "select_valor"].includes(interaction.customId)) {
-                if (!interaction.deferred && !interaction.replied) {
-                    await interaction.deferUpdate();
-                }
-
-                if (interaction.customId === "select_modo") {
-                    config.modo = interaction.values[0];
-                } else if (interaction.customId === "select_valor") {
-                    config.valor = interaction.values[0];
-                }
-
+            // 1. ALTERAR MISTO
+            if (customId === "btn_setup_misto") {
+                config.misto = !config.misto;
                 salvarConfig(config);
 
-                const msgOriginal = interaction.message;
-                if (msgOriginal && msgOriginal.embeds.length > 0) {
-                    const newEmbed = EmbedBuilder.from(msgOriginal.embeds[0])
-                        .setFields(
-                            { name: "🎮 Modo", value: `\`${config.modo || "Mobile"}\``, inline: true },
-                            { name: "💰 Valor", value: `\`R$ ${config.valor || "5,00"}\``, inline: true },
-                            { name: "👥 Tamanho", value: `\`${(config.quantidade || 1) * 2} Players\``, inline: true },
-                            { name: "🧊 Gel Normal", value: config.emojiGelNormal || "🧊", inline: true },
-                            { name: "♾️ Gel Infinito", value: config.emojiGelInfinito || "♾️", inline: true },
-                            { name: "📱 1 Emulador", value: config.emojiEmu1 || "📱", inline: true },
-                            { name: "💻 2 Emuladores", value: config.emojiEmu2 || "💻", inline: true }
-                        );
+                const row1 = message.components[0];
+                const row2 = ActionRowBuilder.from(message.components[1]);
+                row2.components[1].setLabel(config.misto ? " Desativar Misto" : "🔀 Ativar Misto");
 
-                    await interaction.editReply({ 
-                        embeds: [newEmbed] 
-                    });
-                }
-                return;
-            }
-        }
-
-        // --- BOTÕES DO SETUP E PAINÉIS ---
-        if (interaction.isButton()) {
-            const { customId, user, guild, message } = interaction;
-
-            // --- BOTÃO DE SELECIONAR EMOJI (GERA MENU EXCLUSIVO) ---
-            if (customId.startsWith("edit_")) {
-                const targets = { 
-                    edit_gel_normal: "emojiGelNormal", 
-                    edit_gel_infinito: "emojiGelInfinito", 
-                    edit_emu1: "emojiEmu1", 
-                    edit_emu2: "emojiEmu2" 
-                };
-
-                const campoTarget = targets[customId];
-                
-                const emojisServidor = guild.emojis.cache.first(25).map(e => 
-                    new StringSelectMenuOptionBuilder()
-                        .setLabel(e.name)
-                        .setValue(e.id)
-                        .setEmoji({ id: e.id, name: e.name })
-                );
-
-                if (emojisServidor.length === 0) {
-                    await interaction.reply({ content: "❌ Este servidor não possui emojis customizados cadastrados.", flags: MessageFlags.Ephemeral });
-                    return;
-                }
-
-                const menuEmoji = new ActionRowBuilder().addComponents(
-                    new StringSelectMenuBuilder()
-                        .setCustomId(`set_emoji_${campoTarget}`)
-                        .setPlaceholder("✨ Escolha o emoji desejado para esta opção")
-                        .addOptions(emojisServidor)
-                );
-
-                await interaction.reply({ 
-                    content: `👉 Selecione abaixo qual emoji aplicar para **${customId.replace("edit_", "").toUpperCase()}**:`, 
-                    components: [menuEmoji], 
-                    flags: MessageFlags.Ephemeral 
+                await interaction.update({
+                    embeds: [gerarEmbedEditor(config)],
+                    components: [row1, row2]
                 });
                 return;
             }
 
-            // --- ENVIO ÚNICO ---
-            if (customId === "enviar_unico") {
-                const snapshot = JSON.parse(JSON.stringify(config));
-                const painel = painelBuilder(snapshot, [], []);
+            // 2. MODAL DE VALOR
+            if (customId === "btn_setup_valor") {
+                const modal = new ModalBuilder().setCustomId("modal_editor_valor").setTitle("Definir Valor");
+                modal.addComponents(new ActionRowBuilder().addComponents(
+                    new TextInputBuilder().setCustomId("input_valor").setLabel("Exemplo: 20,00 ou 5,00").setStyle(TextInputStyle.Short).setValue(config.valor || "20,00").setRequired(true)
+                ));
+                await interaction.showModal(modal);
+                return;
+            }
+
+            // 3. MODAL DE MODO
+            if (customId === "btn_setup_modo") {
+                const modal = new ModalBuilder().setCustomId("modal_editor_modo").setTitle("Definir Modo");
+                modal.addComponents(new ActionRowBuilder().addComponents(
+                    new TextInputBuilder().setCustomId("input_modo").setLabel("Exemplo: mobile, emulador, misto").setStyle(TextInputStyle.Short).setValue(config.modo || "mobile").setRequired(true)
+                ));
+                await interaction.showModal(modal);
+                return;
+            }
+
+            // 4. MODAL DE QUANTIDADE
+            if (customId === "btn_setup_quantidade") {
+                const modal = new ModalBuilder().setCustomId("modal_editor_qtd").setTitle("Jogadores por Fila");
+                modal.addComponents(new ActionRowBuilder().addComponents(
+                    new TextInputBuilder().setCustomId("input_qtd").setLabel("Digite a qtd por time (Ex: 1 para 1x1)").setStyle(TextInputStyle.Short).setValue(String(config.quantidade || 1)).setRequired(true)
+                ));
+                await interaction.showModal(modal);
+                return;
+            }
+
+            // 5. MODAL DE EMOJIS (AQUI VOCÊ PODE REPETIR O MESMO EMOJI!)
+            if (customId === "btn_setup_emojis") {
+                const modal = new ModalBuilder().setCustomId("modal_editor_emojis").setTitle("Configurar Emojis");
+                modal.addComponents(
+                    new ActionRowBuilder().addComponents(
+                        new TextInputBuilder().setCustomId("input_gel_normal").setLabel("Emoji Gel Normal").setStyle(TextInputStyle.Short).setValue(config.emojiGelNormal || "🧊").setRequired(true)
+                    ),
+                    new ActionRowBuilder().addComponents(
+                        new TextInputBuilder().setCustomId("input_gel_infinito").setLabel("Emoji Gel Infinito").setStyle(TextInputStyle.Short).setValue(config.emojiGelInfinito || "♾️").setRequired(true)
+                    )
+                );
+                await interaction.showModal(modal);
+                return;
+            }
+
+            // 6. SALVAR E ENVIAR PAINEL DEFINITIVO
+            if (customId === "btn_setup_salvar") {
+                salvarConfig(config);
+                const painel = painelBuilder(config, [], []);
 
                 try {
                     const msg = await interaction.channel.send({ embeds: painel.embeds, components: painel.components });
-                    filas.setConfig(msg.id, snapshot);
-                    await interaction.reply({ 
-                        content: `✅ Painel único enviado (**${snapshot.modo || "Mobile"}** - R$ ${snapshot.valor || "5,00"})!`, 
-                        flags: MessageFlags.Ephemeral 
-                    });
+                    filas.setConfig(msg.id, config);
+                    await interaction.reply({ content: "✅ Painel publicado com sucesso no canal!", flags: MessageFlags.Ephemeral });
                 } catch (err) {
-                    console.error("Erro ao enviar painel único:", err);
-                    await interaction.reply({ content: "❌ Erro ao enviar painel no canal.", flags: MessageFlags.Ephemeral });
+                    console.error("Erro ao publicar painel:", err);
+                    await interaction.reply({ content: "❌ Erro ao postar o painel no canal.", flags: MessageFlags.Ephemeral });
                 }
                 return;
-            }
-
-            // --- ENVIO DO PACK COMPLETO ---
-            if (customId === "enviar_todos_valores") {
-                await interaction.reply({ content: "⏳ Enviando pack de 9 painéis...", flags: MessageFlags.Ephemeral });
-                const valores = ["100,00", "50,00", "20,00", "10,00", "5,00", "3,00", "2,00", "1,00", "0,50"];
-                let enviados = 0;
-
-                for (const v of valores) {
-                    const snapshot = JSON.parse(JSON.stringify(config));
-                    snapshot.valor = v;
-                    const painel = painelBuilder(snapshot, [], []);
-
-                    try {
-                        const msg = await interaction.channel.send({ embeds: painel.embeds, components: painel.components });
-                        filas.setConfig(msg.id, snapshot);
-                        enviados++;
-                    } catch (err) {
-                        console.error(`Erro ao enviar painel R$ ${v}:`, err);
-                    }
-                    await new Promise(r => setTimeout(r, 800));
-                }
-
-                await interaction.editReply({ content: `✅ Pack concluído! ${enviados}/9 painéis enviados com sucesso.` });
-                return;
-            }
-
-            // --- BOTÕES DE FILA (Entrar / Sair) ---
-            if (customId === "entrar_fila1" || customId === "entrar_fila2" || customId === "sair_fila") {
-                if (!interaction.deferred && !interaction.replied) {
-                    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-                }
-
-                const painelId = message.id;
-                let configReal = filas.getConfig(painelId);
-
-                if (!configReal) {
-                    const titulo = message.embeds[0]?.title || "";
-                    const partes = titulo.split("|");
-                    const modo = partes[0]?.trim() || "Mobile";
-                    const valor = partes[1]?.replace("R$", "")?.trim() || "5,00";
-                    configReal = { modo, valor, quantidade: 1 };
-                    filas.setConfig(painelId, configReal);
-                }
-
-                let tipoFila = null;
-                if (customId === "entrar_fila1") tipoFila = "normal";
-                if (customId === "entrar_fila2") tipoFila = "infinito";
-
-                if (customId === "sair_fila") {
-                    filas.sairFila(painelId, user);
-                } else {
-                    const resultado = filas.entrarFila(painelId, tipoFila, user);
-                    if (!resultado.ok) {
-                        await interaction.editReply({ content: resultado.motivo });
-                        return;
-                    }
-                }
-
-                const listaNormal = filas.jogadores("normal", painelId);
-                const listaInfinito = filas.jogadores("infinito", painelId);
-                const confirmados = filas.getConfirmados(painelId);
-                const novoPainel = painelBuilder(configReal, listaNormal, listaInfinito, confirmados);
-
-                try {
-                    await message.edit(novoPainel);
-                } catch (err) {
-                    console.error("Erro ao editar painel de fila:", err);
-                }
-
-                const resposta = customId === "sair_fila" 
-                    ? `🚪 <@${user.id}>, você saiu da fila!` 
-                    : `✅ <@${user.id}>, você entrou na fila!`;
-                await interaction.editReply({ content: resposta });
-                return;
-            }
-
-            // --- BOTÃO CONFIRMAR PRESENÇA ---
-            if (customId === "confirmar_partida") {
-                if (!interaction.deferred && !interaction.replied) {
-                    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-                }
-
-                const painelId = message.id;
-                const configReal = filas.getConfig(painelId);
-                if (!configReal) {
-                    await interaction.editReply({ content: "❌ Configuração da partida não encontrada." });
-                    return;
-                }
-
-                const qtd = (configReal.quantidade || 1) * 2;
-                const listaNormal = filas.jogadores("normal", painelId);
-                const listaInfinito = filas.jogadores("infinito", painelId);
-                const totalJogadores = listaNormal.length + listaInfinito.length;
-
-                if (totalJogadores < qtd) {
-                    await interaction.editReply({ content: "❌ A fila precisa estar totalmente cheia!" });
-                    return;
-                }
-
-                if (!filas.getConfirmados(painelId).includes(user.id)) {
-                    filas.adicionarConfirmado(painelId, user.id);
-                }
-
-                const novosConfirmados = filas.getConfirmados(painelId);
-                const novoPainel = painelBuilder(configReal, listaNormal, listaInfinito, novosConfirmados);
-
-                try {
-                    await message.edit(novoPainel);
-                } catch (err) {
-                    console.error("Erro ao editar confirmação:", err);
-                }
-
-                if (novosConfirmados.length >= qtd) {
-                    try {
-                        const canalPartida = await guild.channels.create({
-                            name: `partida-${Date.now().toString().slice(-4)}`,
-                            type: ChannelType.GuildText,
-                            topic: painelId,
-                            permissionOverwrites: [
-                                { id: guild.id, deny: [PermissionFlagsBits.ViewChannel] },
-                                ...listaNormal.map(j => ({ id: j.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] })),
-                                ...listaInfinito.map(j => ({ id: j.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] }))
-                            ]
-                        });
-
-                        filas.setMatchChannel(painelId, canalPartida.id);
-                        filas.setMatchStatus(painelId, "confirmada");
-                        filas.limparFilas(painelId);
-
-                        const jogadoresMencao = [...listaNormal, ...listaInfinito].map(j => `<@${j.id}>`).join(" ");
-
-                        const controlRow1 = new ActionRowBuilder().addComponents(
-                            new ButtonBuilder().setCustomId("mediador_senha").setLabel("🔑 Senha").setStyle(ButtonStyle.Secondary),
-                            new ButtonBuilder().setCustomId("mediador_codigo").setLabel("📟 Código").setStyle(ButtonStyle.Secondary),
-                            new ButtonBuilder().setCustomId("mediador_cancelar").setLabel("❌ Cancelar").setStyle(ButtonStyle.Danger),
-                            new ButtonBuilder().setCustomId("mediador_vencedor").setLabel("🏆 Vencedor").setStyle(ButtonStyle.Success)
-                        );
-                        const controlRow2 = new ActionRowBuilder().addComponents(
-                            new ButtonBuilder().setCustomId("mediador_finalizar").setLabel("🏁 Finalizar").setStyle(ButtonStyle.Danger),
-                            new ButtonBuilder().setCustomId("mediador_pagamento").setLabel("💰 Pagamento").setStyle(ButtonStyle.Primary)
-                        );
-
-                        await canalPartida.send({ content: `🎮 **Partida confirmada!** ${jogadoresMencao}` });
-                        await canalPartida.send({ content: "🛠️ **Painel do Mediador**", components: [controlRow1, controlRow2] });
-
-                        await interaction.editReply({ content: `✅ Partida confirmada! Canal criado: <#${canalPartida.id}>` });
-                    } catch (err) {
-                        console.error("Erro ao criar canal:", err);
-                        await interaction.editReply({ content: "❌ Ocorreu um erro ao criar o canal da partida." });
-                    }
-                } else {
-                    const faltam = qtd - novosConfirmados.length;
-                    await interaction.editReply({ content: `✅ Presença confirmada! Faltam ${faltam} jogador(es).` });
-                }
-                return;
-            }
-
-            // --- AÇÕES DO PAINEL DO MEDIADOR ---
-            if (customId.startsWith("mediador_")) {
-                const painelId = interaction.channel.topic || null;
-                if (!painelId) {
-                    await interaction.reply({ content: "❌ Erro: ID do painel não encontrado no tópico.", flags: MessageFlags.Ephemeral });
-                    return;
-                }
-
-                if (customId === "mediador_senha") {
-                    const modal = new ModalBuilder().setCustomId(`modal_senha_${painelId}`).setTitle("Senha da Sala");
-                    modal.addComponents(new ActionRowBuilder().addComponents(
-                        new TextInputBuilder().setCustomId("input_senha").setLabel("Senha").setStyle(TextInputStyle.Short).setRequired(true)
-                    ));
-                    await interaction.showModal(modal);
-                    return;
-                }
-
-                if (customId === "mediador_codigo") {
-                    const modal = new ModalBuilder().setCustomId(`modal_codigo_${painelId}`).setTitle("Código da Sala");
-                    modal.addComponents(new ActionRowBuilder().addComponents(
-                        new TextInputBuilder().setCustomId("input_codigo").setLabel("Código").setStyle(TextInputStyle.Short).setRequired(true)
-                    ));
-                    await interaction.showModal(modal);
-                    return;
-                }
-
-                if (customId === "mediador_cancelar") {
-                    await filas.limparFilas(painelId);
-                    await interaction.reply({ content: "✅ Partida cancelada. Excluindo canal em 5 segundos...", flags: MessageFlags.Ephemeral });
-                    setTimeout(() => interaction.channel.delete().catch(() => {}), 5000);
-                    return;
-                }
-
-                if (customId === "mediador_vencedor") {
-                    const select = new StringSelectMenuBuilder()
-                        .setCustomId(`select_vencedor_${painelId}`)
-                        .setPlaceholder("Selecione o vencedor")
-                        .addOptions(
-                            new StringSelectMenuOptionBuilder().setLabel("Time Normal / Time A").setValue("normal"),
-                            new StringSelectMenuOptionBuilder().setLabel("Time Infinito / Time B").setValue("infinito")
-                        );
-                    await interaction.reply({ content: "Escolha o time vencedor:", components: [new ActionRowBuilder().addComponents(select)], flags: MessageFlags.Ephemeral });
-                    return;
-                }
-
-                if (customId === "mediador_finalizar") {
-                    await filas.limparFilas(painelId);
-                    await interaction.reply({ content: "🏁 Partida finalizada! Apagando o canal em breve...", flags: MessageFlags.Ephemeral });
-                    setTimeout(() => interaction.channel.delete().catch(() => {}), 3000);
-                    return;
-                }
-
-                if (customId === "mediador_pagamento") {
-                    const modal = new ModalBuilder().setCustomId(`modal_pagamento_${painelId}`).setTitle("Chave PIX");
-                    modal.addComponents(new ActionRowBuilder().addComponents(
-                        new TextInputBuilder().setCustomId("input_chave").setLabel("Chave PIX").setStyle(TextInputStyle.Short).setRequired(true)
-                    ));
-                    await interaction.showModal(modal);
-                    return;
-                }
             }
         }
 
-        // --- SUBMISSÃO DE MODAIS ---
+        // --- PROCESSAMENTO DOS MODAIS (ATUALIZAÇÃO EM TEMPO REAL) ---
         if (interaction.isModalSubmit()) {
-            if (!interaction.deferred && !interaction.replied) {
-                await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-            }
-            const modalType = interaction.customId.split('_')[1];
+            const { customId, fields } = interaction;
 
-            if (modalType === 'senha') {
-                const senha = interaction.fields.getTextInputValue('input_senha');
-                await interaction.editReply({ content: `🔑 **Senha da Sala:** \`${senha}\`` });
-            } else if (modalType === 'codigo') {
-                const codigo = interaction.fields.getTextInputValue('input_codigo');
-                await interaction.editReply({ content: `📟 **Código da Sala:** \`${codigo}\`` });
-            } else if (modalType === 'pagamento') {
-                const chave = interaction.fields.getTextInputValue('input_chave');
-                await interaction.editReply({ content: `💰 **Chave PIX:** \`${chave}\`` });
+            if (customId === "modal_editor_valor") {
+                config.valor = fields.getTextInputValue("input_valor");
+            } else if (customId === "modal_editor_modo") {
+                config.modo = fields.getTextInputValue("input_modo");
+            } else if (customId === "modal_editor_qtd") {
+                const parsed = parseInt(fields.getTextInputValue("input_qtd"));
+                config.quantidade = isNaN(parsed) ? 1 : parsed;
+            } else if (customId === "modal_editor_emojis") {
+                // Aqui você pode colá o MESMO emoji nos dois campos se quiser!
+                config.emojiGelNormal = fields.getTextInputValue("input_gel_normal");
+                config.emojiGelInfinito = fields.getTextInputValue("input_gel_infinito");
             }
+
+            salvarConfig(config);
+
+            await interaction.update({
+                embeds: [gerarEmbedEditor(config)]
+            });
             return;
         }
 
     } catch (err) {
-        console.error("Erro geral na interação:", err);
-        if (!interaction.replied && !interaction.deferred) {
-            try {
-                await interaction.reply({ content: "❌ Ocorreu um erro ao processar esta ação.", flags: MessageFlags.Ephemeral });
-            } catch (e) {}
-        }
+        console.error("Erro na interação:", err);
     }
 };
