@@ -165,12 +165,24 @@ module.exports = async (interaction) => {
                 return await interaction.editReply({ content: "✅ Salvo!" });
             }
 
-            // BOTÃO "ENVIAR PAINEL"
+            // 🔥 BOTÃO "ENVIAR PAINEL" (ORDEM EXATA CORRIGIDA)
             if (customId === "enviar_painel_agora") {
                 const configBase = pegarConfig();
                 if (!configBase.quantidade) configBase.quantidade = 1;
 
-                const listaValores = ["100,00", "50,00", "20,00", "10,00", "5,00", "3,00", "2,00", "1,00", "0,50"];
+                // 💥 LISTA NA ORDEM CERTA, SEM DUPLICATAS
+                const listaValores = [
+                    "100,00", 
+                    "50,00", 
+                    "20,00", 
+                    "10,00", 
+                    "5,00", 
+                    "3,00", 
+                    "2,00", 
+                    "1,00", 
+                    "0,50"
+                ];
+
                 let mensagensEnviadas = 0;
 
                 for (const valor of listaValores) {
@@ -188,11 +200,12 @@ module.exports = async (interaction) => {
                     } catch (err) {
                         console.error(`Erro ao enviar painel com valor ${valor}:`, err);
                     }
+                    // Aguarda 500ms entre cada envio para não dar rate limit
                     await new Promise(resolve => setTimeout(resolve, 500));
                 }
 
                 return await interaction.editReply({ 
-                    content: `✅ Foram enviados ${mensagensEnviadas} painéis!` 
+                    content: `✅ Foram enviados ${mensagensEnviadas} painéis (100,00 a 0,50) em ordem!` 
                 });
             }
 
@@ -280,24 +293,21 @@ module.exports = async (interaction) => {
                 }
             }
 
-            // ================== LÓGICA DAS FILAS (ENTRAR / SAIR) COM RECUPERAÇÃO SILENCIOSA ==================
+            // ================== LÓGICA DAS FILAS (ENTRAR / SAIR) ==================
             if (customId.startsWith("entrar_") || customId === "sair_fila") {
                 const painelId = message.id;
 
-                // Tenta obter a configuração salva
                 let configReal = filas.getConfig(painelId);
 
-                // Se não existir, cria um fallback silenciosamente
+                // Fallback silencioso
                 if (!configReal) {
                     console.log(`🔁 [RECUPERAÇÃO] Painel ${painelId} sem configuração. Criando fallback.`);
 
-                    // Analisa o título do embed para extrair Nome e Valor
                     const titulo = message.embeds[0]?.title || "";
                     const partes = titulo.split("|");
                     const nomePainel = partes[0]?.trim() || "PHANTOM";
                     const valor = partes[1]?.trim() || "20,00";
 
-                    // Analisa os botões para determinar o modo e se é misto
                     let modoDetectado = "Mobile";
                     let mistoDetectado = false;
 
@@ -307,7 +317,6 @@ module.exports = async (interaction) => {
                         const label = btn.label || "";
                         if (label.includes("Emulador")) {
                             modoDetectado = "Emulador";
-                            // Se os botões são verdes (Success), significa que Misto está ativado
                             if (btn.style === ButtonStyle.Success) {
                                 mistoDetectado = true;
                             }
@@ -327,15 +336,13 @@ module.exports = async (interaction) => {
                         emojiEmul1: null,
                         emojiEmul2: null,
                         emojiSair: null,
-                        quantidade: 1 // padrão
+                        quantidade: 1
                     };
 
-                    // Salva o fallback no sistema de filas
                     filas.setConfig(painelId, configFallback);
                     configReal = filas.getConfig(painelId);
                 }
 
-                // Se ainda assim não tiver, usa um fallback genérico (nunca mostra erro)
                 if (!configReal) {
                     console.error(`❌ ERRO CRÍTICO: Painel ${painelId} não pode ser recuperado. Usando fallback genérico.`);
                     configReal = {
@@ -352,7 +359,6 @@ module.exports = async (interaction) => {
                     };
                 }
 
-                // Agora configReal está sempre definido
                 const isMisto = configReal.modoMisto === true;
                 const isEmulador = isMisto || (configReal.modo && configReal.modo.toLowerCase() === "emulador");
 
