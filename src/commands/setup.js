@@ -71,10 +71,6 @@ module.exports = {
                 )
         );
 
-        // LINHA 4: Emojis (Gel e Emulador em um único menu? Não, precisamos de dois menus separados, mas podemos juntar em um único menu com dois placeholders? O Discord permite até 5 linhas. Vamos usar dois menus em uma linha? Não pode, um menu por linha. Vamos usar dois menus em duas linhas, mas aí ultrapassamos 5 linhas. Vamos juntar em um único menu com duas opções? Melhor: Usar um menu para Emoji Gel e outro para Emoji Emulador, mas colocá-los na mesma linha? Não é permitido. Vamos usar dois botões para abrir menus separados? Isso é mais complexo. Simplificamos: usamos dois menus em duas linhas, e a linha 5 é o botão Enviar. Isso dá 5 linhas (Modo, Valor, Quantidade, Emoji Gel, Emoji Emulador). Mas precisamos também do botão Enviar. Então teremos 6 linhas. Vamos combinar Emoji Gel e Emoji Emulador em uma única linha? Não podemos ter dois menus na mesma linha. Então faremos: Linha 1: Modo, Linha 2: Valor, Linha 3: Quantidade, Linha 4: Emoji Gel, Linha 5: Emoji Emulador. E o botão Enviar terá que ser adicionado a uma dessas linhas? Podemos colocar o botão Enviar na linha 5 junto com o menu Emoji Emulador? Não, não podemos misturar menu e botão na mesma linha? Na verdade podemos, uma linha pode ter menus e botões, mas o Discord pode não aceitar misturar tipos. Melhor é usar um botão separado na linha 6, mas aí ultrapassa. Vamos simplificar: remover o seletor de cargos (pode ser feito depois) e colocar o botão Enviar na linha 4 junto com o Emoji Gel? Vamos fazer: Linha 1: Modo, Linha 2: Valor, Linha 3: Quantidade, Linha 4: Emoji Gel + Emoji Emulador (dois menus na mesma linha? Não funciona). Então faremos: Linha 1: Modo, Linha 2: Valor, Linha 3: Quantidade, Linha 4: Emoji Gel, Linha 5: Emoji Emulador + Botão Enviar (misturar menu e botão na mesma linha é permitido? Sim, o Discord permite misturar tipos de componentes em uma linha, desde que o total de componentes seja <=5. Então podemos ter um menu e um botão na mesma linha). Vamos fazer isso: Linha 5: StringSelectMenu (Emoji Emulador) + Button (Enviar). Isso dará 5 linhas. Ok.
-
-        Vamos refazer o código com essa estrutura.
-
         // LINHA 4: Emoji Gel
         const rowEmojiGel = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
@@ -108,9 +104,6 @@ module.exports = {
                 .setLabel("🚀 Enviar Painéis")
                 .setStyle(ButtonStyle.Primary)
         );
-
-        // O seletor de cargos será removido para simplificar (pode ser adicionado depois)
-        // Se quiser manter, podemos colocar na linha 6, mas aí estoura o limite. Então removemos.
 
         return await interaction.editReply({ 
             embeds: [embed], 
