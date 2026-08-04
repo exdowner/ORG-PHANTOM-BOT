@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, MessageFlags, PermissionFlagsBits } = require("discord.js");
-const { pegarConfig } = require("../systems/config.js");
+const { pegarConfig, salvarConfig } = require("../systems/config.js");
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -14,10 +14,11 @@ module.exports = {
         const embed = new EmbedBuilder()
             .setColor("#2b2d31")
             .setTitle("⚙️ Configuração do Painel")
-            .setDescription("Configure abaixo e clique em 'Enviar Painéis'.")
+            .setDescription("Configure abaixo e clique em 'Salvar'.")
             .addFields(
                 { name: "💰 Valor:", value: `\`${config.valor || "5,00"}\``, inline: true },
-                { name: "👥 Tamanho:", value: `\`${config.quantidade}x${config.quantidade}\``, inline: true }
+                { name: "👥 Tamanho:", value: `\`${config.quantidade}x${config.quantidade}\``, inline: true },
+                { name: "🔀 Misto:", value: config.modoMisto ? "Ativado" : "Desativado", inline: true }
             )
             .setFooter({ text: "Só você pode ver esta mensagem • Ignorar mensagem" });
 
@@ -52,15 +53,19 @@ module.exports = {
                 )
         );
 
-        // LINHA 3: Botão Enviar
+        // LINHA 3: Botão Misto On/Off e Salvar
         const row3 = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
-                .setCustomId("enviar_paineis")
-                .setLabel("🚀 Enviar Painéis")
+                .setCustomId("alternar_misto")
+                .setLabel(config.modoMisto ? "🔀 Misto: Ativado" : "🔀 Misto: Desativado")
+                .setStyle(config.modoMisto ? ButtonStyle.Success : ButtonStyle.Secondary),
+            new ButtonBuilder()
+                .setCustomId("salvar_config")
+                .setLabel("💾 Salvar Configuração")
                 .setStyle(ButtonStyle.Primary)
         );
 
-        await interaction.reply({ 
+        return await interaction.reply({ 
             embeds: [embed], 
             components: [row1, row2, row3],
             flags: MessageFlags.Ephemeral

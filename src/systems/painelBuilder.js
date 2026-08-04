@@ -1,4 +1,3 @@
-
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 
 module.exports = (config, filaNormal, filaInfinito, confirmados = []) => {
@@ -15,23 +14,31 @@ module.exports = (config, filaNormal, filaInfinito, confirmados = []) => {
         .setColor("#2b2d31")
         .setTitle(titulo)
         .setThumbnail(urlImagem)
-        .setFooter({ text: "ORG PHANTOM | Sistema de Partidas" })
-        .addFields(
-            { name: `🧊 Gel Normal (${filaNormal.length}/${qtd})`, value: formatar(filaNormal), inline: false },
-            { name: `♾️ Gel Infinito (${filaInfinito.length}/${qtd})`, value: formatar(filaInfinito), inline: false }
-        );
+        .setFooter({ text: "ORG PHANTOM | Sistema de Partidas" });
+
+    // Define os nomes das filas de acordo com o modo Misto
+    const isMisto = config.modoMisto === true;
+    const nomeFila1 = isMisto ? "1 Emulador" : "Gel Normal";
+    const nomeFila2 = isMisto ? "2 Emuladores" : "Gel Infinito";
+
+    embed.addFields(
+        { name: `${nomeFila1} (${filaNormal.length}/${qtd})`, value: formatar(filaNormal), inline: false },
+        { name: `${nomeFila2} (${filaInfinito.length}/${qtd})`, value: formatar(filaInfinito), inline: false }
+    );
 
     const row = new ActionRowBuilder()
         .addComponents(
             new ButtonBuilder()
                 .setCustomId("entrar_fila1")
-                .setLabel("Entrar")
-                .setEmoji("🧊")
+                .setLabel(nomeFila1)
+                .setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder()
+                .setCustomId("entrar_fila2")
+                .setLabel(nomeFila2)
                 .setStyle(ButtonStyle.Secondary),
             new ButtonBuilder()
                 .setCustomId("sair_fila")
                 .setLabel("Sair")
-                .setEmoji("🚪")
                 .setStyle(ButtonStyle.Danger)
         );
 

@@ -14,7 +14,8 @@ function carregarConfig() {
     }
     return {
         valor: "5,00",
-        quantidade: 1
+        quantidade: 1,
+        modoMisto: false
     };
 }
 

@@ -49,7 +49,8 @@ module.exports = async (interaction) => {
                 const embed = msgOriginal.embeds[0];
                 const newEmbed = embed.setFields(
                     { name: "💰 Valor:", value: `\`${config.valor || "5,00"}\``, inline: true },
-                    { name: "👥 Tamanho:", value: `\`${config.quantidade}x${config.quantidade}\``, inline: true }
+                    { name: "👥 Tamanho:", value: `\`${config.quantidade}x${config.quantidade}\``, inline: true },
+                    { name: "🔀 Misto:", value: config.modoMisto ? "Ativado" : "Desativado", inline: true }
                 );
                 try {
                     await msgOriginal.edit({ embeds: [newEmbed] });
@@ -65,6 +66,57 @@ module.exports = async (interaction) => {
         // --- BOTÕES ---
         if (interaction.isButton()) {
             const { customId, user, guild, message, channel } = interaction;
+
+            // --- ALTERNAR MISTO ---
+            if (customId === "alternar_misto") {
+                if (!interaction.deferred && !interaction.replied) {
+                    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+                }
+                const config = pegarConfig();
+                config.modoMisto = !config.modoMisto;
+                salvarConfig(config);
+
+                const msgOriginal = interaction.message;
+                if (msgOriginal && msgOriginal.embeds.length > 0) {
+                    const embed = msgOriginal.embeds[0];
+                    const newEmbed = embed.setFields(
+                        { name: "💰 Valor:", value: `\`${config.valor || "5,00"}\``, inline: true },
+                        { name: "👥 Tamanho:", value: `\`${config.quantidade}x${config.quantidade}\``, inline: true },
+                        { name: "🔀 Misto:", value: config.modoMisto ? "Ativado" : "Desativado", inline: true }
+                    );
+                    try {
+                        await msgOriginal.edit({ embeds: [newEmbed] });
+                    } catch (err) {
+                        console.error("Erro ao atualizar preview:", err);
+                    }
+                }
+
+                // Atualiza o botão Misto
+                const row3 = new ActionRowBuilder().addComponents(
+                    new ButtonBuilder()
+                        .setCustomId("alternar_misto")
+                        .setLabel(config.modoMisto ? "🔀 Misto: Ativado" : "🔀 Misto: Desativado")
+                        .setStyle(config.modoMisto ? ButtonStyle.Success : ButtonStyle.Secondary),
+                    new ButtonBuilder()
+                        .setCustomId("salvar_config")
+                        .setLabel("💾 Salvar Configuração")
+                        .setStyle(ButtonStyle.Primary)
+                );
+                await interaction.editReply({ 
+                    content: "🔄 Modo Misto alterado!", 
+                    components: [interaction.message.components[0], interaction.message.components[1], row3] 
+                });
+                return;
+            }
+
+            // --- SALVAR CONFIGURAÇÃO ---
+            if (customId === "salvar_config") {
+                if (!interaction.deferred && !interaction.replied) {
+                    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+                }
+                await interaction.editReply({ content: "✅ Configuração salva com sucesso!" });
+                return;
+            }
 
             // --- ENVIAR PAINÉIS ---
             if (customId === "enviar_paineis") {
@@ -97,7 +149,7 @@ module.exports = async (interaction) => {
             }
 
             // --- BOTÕES DO PAINEL (Entrar, Sair, Confirmar) ---
-            if (customId === "entrar_fila1" || customId === "sair_fila" || customId === "confirmar_partida") {
+            if (customId === "entrar_fila1" || customId === "entrar_fila2" || customId === "sair_fila" || customId === "confirmar_partida") {
                 if (!interaction.deferred && !interaction.replied) {
                     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
                 }
@@ -108,18 +160,26 @@ module.exports = async (interaction) => {
                     const titulo = message.embeds[0]?.title || "";
                     const partes = titulo.split("|");
                     const valor = partes[1]?.trim() || "5,00";
-                    configReal = { valor, quantidade: 1 };
+                    configReal = { valor, quantidade: 1, modoMisto: false };
                     filas.setConfig(painelId, configReal);
                 }
 
+                // Se for entrar, determina qual fila
+                let tipoFila = null;
                 if (customId === "entrar_fila1") {
-                    const resultado = filas.entrarFila(painelId, "normal", user);
+                    tipoFila = "normal";
+                } else if (customId === "entrar_fila2") {
+                    tipoFila = "infinito";
+                }
+
+                if (customId === "sair_fila") {
+                    filas.sairFila(painelId, user);
+                } else if (customId === "entrar_fila1" || customId === "entrar_fila2") {
+                    const resultado = filas.entrarFila(painelId, tipoFila, user);
                     if (!resultado.ok) {
                         await interaction.editReply({ content: resultado.motivo });
                         return;
                     }
-                } else if (customId === "sair_fila") {
-                    filas.sairFila(painelId, user);
                 } else if (customId === "confirmar_partida") {
                     // Lógica de confirmação progressiva
                     const qtd = (configReal.quantidade || 1) * 2;
