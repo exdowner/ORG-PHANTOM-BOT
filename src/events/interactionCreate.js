@@ -18,9 +18,9 @@ const configModule = require("../systems/config.js");
 const pegarConfig = configModule.pegarConfig || (() => ({}));
 const salvarConfig = configModule.salvarConfig || (() => ({}));
 
-// IDs dos cargos que podem ver o painel de mediador
-const MEDIADOR_ROLE_ID = "ID_DO_CARGO_MEDIADOR"; // Substitua pelo ID real
-const ADMIN_ROLE_ID = "ID_DO_CARGO_ADMIN";       // Substitua pelo ID real
+// 🔥 SUBSTITUA ESSES IDs PELOS IDS REAIS DO SEU SERVIDOR
+const MEDIADOR_ROLE_ID = "ID_DO_CARGO_MEDIADOR";
+const ADMIN_ROLE_ID = "ID_DO_CARGO_ADMIN";
 
 function temPermissaoMediador(member) {
     return member.roles.cache.has(MEDIADOR_ROLE_ID) || member.roles.cache.has(ADMIN_ROLE_ID);
@@ -89,6 +89,9 @@ module.exports = async (interaction) => {
         if (interaction.isButton()) {
             const { customId, user, guild, message, channel } = interaction;
 
+            // 🔥 CORREÇÃO DA REDECLARAÇÃO: Declaramos uma única vez
+            let painelId = null;
+
             // ======== BOTÃO "ENVIAR PAINÉIS" (do /setup) ========
             if (customId === "enviar_paineis") {
                 if (!interaction.deferred && !interaction.replied) {
@@ -132,7 +135,9 @@ module.exports = async (interaction) => {
                     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
                 }
 
-                const painelId = message.id;
+                // 🔥 Atribuição única
+                painelId = message.id;
+
                 let configReal = filas.getConfig(painelId);
                 if (!configReal) {
                     const titulo = message.embeds[0]?.title || "";
@@ -187,7 +192,9 @@ module.exports = async (interaction) => {
                     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
                 }
 
-                const painelId = message.id;
+                // 🔥 Atribuição única
+                painelId = message.id;
+
                 const configReal = filas.getConfig(painelId);
                 if (!configReal) {
                     await interaction.editReply({ content: "❌ Configuração do painel não encontrada." });
@@ -198,7 +205,6 @@ module.exports = async (interaction) => {
                 const listaNormal = filas.jogadores("normal", painelId);
                 const listaInfinito = filas.jogadores("infinito", painelId);
 
-                // Verifica se a fila Normal está cheia (usando qtd)
                 if (listaNormal.length < qtd) {
                     await interaction.editReply({ content: "❌ A fila ainda não está cheia." });
                     return;
@@ -210,12 +216,13 @@ module.exports = async (interaction) => {
                     const canalPartida = await guild.channels.create({
                         name: nomeCanal,
                         type: ChannelType.GuildText,
+                        // 🔥 Salva o painelId no tópico do canal para ser lido pelo Mediador depois
+                        topic: painelId,
                         permissionOverwrites: [
                             {
                                 id: guild.id,
                                 deny: [PermissionFlagsBits.ViewChannel]
                             },
-                            // Permite ver para os jogadores (ambas as filas)
                             ...listaNormal.map(j => ({
                                 id: j.id,
                                 allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages]
@@ -264,7 +271,6 @@ module.exports = async (interaction) => {
                                 .setStyle(ButtonStyle.Primary)
                         );
 
-                    // Envia a mensagem de controle (visível para todos, mas apenas mediadores podem interagir)
                     await canalPartida.send({
                         content: `🎮 **Partida confirmada!**\nJogadores: ${[...listaNormal, ...listaInfinito].map(j => `<@${j.id}>`).join(", ")}`,
                         components: [controlRow, controlRow2]
@@ -278,7 +284,7 @@ module.exports = async (interaction) => {
                 return;
             }
 
-            // ======== BOTÕES DO MEDIADOR (somente visíveis para mediadores/adms) ========
+            // ======== BOTÕES DO MEDIADOR ========
             if (customId.startsWith("mediador_")) {
                 // Verifica permissão
                 if (!temPermissaoMediador(interaction.member)) {
@@ -286,22 +292,13 @@ module.exports = async (interaction) => {
                     return;
                 }
 
-                const painelId = message.id; // ID da mensagem do painel original? Precisamos do painelId real.
-                // Como estamos no canal da partida, precisamos descobrir qual painel originou este canal.
-                // Vamos percorrer o cache de painéis para encontrar o que tem este matchChannelId.
-                // (Simplificação: poderíamos salvar o painelId no canal usando um tópico, mas faremos simples)
-                // Para este exemplo, assumiremos que o canal foi criado e o painelId está guardado em filas.
-                // Como não temos uma função para reverter, vamos usar uma abordagem: 
-                // Quando criamos o canal, poderíamos guardar o painelId no canal (ex: tópico). Vamos fazer isso.
+                // 🔥 Lê o painelId diretamente do tópico do canal da partida
+                painelId = interaction.channel.topic || null;
 
-                // Por enquanto, vamos apenas responder de forma simplificada.
-                // Você pode implementar a lógica de buscar o painelId a partir do canal.
-
-                // Implementação real: no momento da criação do canal, defina o tópico como painelId.
-                // Então aqui pegamos: painelId = canal.topic;
-
-                // Para este código, usaremos uma variável fictícia.
-                const painelId = message.channel.topic || "painel_desconhecido";
+                if (!painelId) {
+                    await interaction.reply({ content: "❌ Painel não encontrado. Canal sem tópico.", flags: MessageFlags.Ephemeral });
+                    return;
+                }
 
                 // Exemplo de ação: abrir modal para senha
                 if (customId === "mediador_senha") {
@@ -333,7 +330,6 @@ module.exports = async (interaction) => {
                 }
 
                 if (customId === "mediador_cancelar") {
-                    // Cancela a partida, limpa as filas e deleta o canal
                     const canal = interaction.channel;
                     await filas.limparFilas(painelId);
                     filas.setMatchStatus(painelId, "cancelada");
@@ -349,12 +345,9 @@ module.exports = async (interaction) => {
                 }
 
                 if (customId === "mediador_vencedor") {
-                    // Abre um menu para escolher o vencedor (time A ou B)
-                    // Precisamos dos jogadores das filas
                     const listaNormal = filas.jogadores("normal", painelId);
                     const listaInfinito = filas.jogadores("infinito", painelId);
-                    // Se for 1x1, cada lista tem 1 jogador; se 2x2, cada lista tem 2, etc.
-                    // Oferecemos opções: "Time A (Gel Normal)", "Time B (Gel Infinito)"
+
                     const select = new StringSelectMenuBuilder()
                         .setCustomId(`select_vencedor_${painelId}`)
                         .setPlaceholder("Escolha o vencedor")
@@ -372,8 +365,6 @@ module.exports = async (interaction) => {
                 }
 
                 if (customId === "mediador_finalizar") {
-                    // Finaliza a partida, registra o vencedor se já foi declarado, limpa filas e deleta canal
-                    // (Aqui você pode adicionar lógica de ranking)
                     await interaction.reply({ content: "🏁 Partida finalizada! Canal será deletado.", flags: MessageFlags.Ephemeral });
                     const canal = interaction.channel;
                     setTimeout(async () => {
@@ -387,7 +378,6 @@ module.exports = async (interaction) => {
                 }
 
                 if (customId === "mediador_pagamento") {
-                    // Abre modal com texto e upload de imagem
                     const modal = new ModalBuilder()
                         .setCustomId(`modal_pagamento_${painelId}`)
                         .setTitle("Chave de Pagamento");
@@ -396,9 +386,6 @@ module.exports = async (interaction) => {
                         .setLabel("Digite a chave PIX")
                         .setStyle(TextInputStyle.Short)
                         .setRequired(true);
-                    // Para upload de imagem, usamos um modal simples, mas o Discord não permite upload em modal.
-                    // Podemos usar um comando separado ou enviar a imagem no chat.
-                    // Por simplicidade, enviaremos uma mensagem após o modal.
                     modal.addComponents(new ActionRowBuilder().addComponents(inputChave));
                     await interaction.showModal(modal);
                     return;
@@ -428,7 +415,6 @@ module.exports = async (interaction) => {
             } else if (modalType === 'pagamento') {
                 const chave = interaction.fields.getTextInputValue('input_chave');
                 await interaction.editReply({ content: `💰 Chave PIX: \`${chave}\`\n\nEnvie a imagem do QR code neste chat.` });
-                // Aqui você pode adicionar um listener para upload de imagem, mas deixamos simples.
             }
             return;
         }
@@ -439,13 +425,11 @@ module.exports = async (interaction) => {
                 await interaction.deferReply({ flags: MessageFlags.Ephemeral });
             }
             const painelId = interaction.customId.replace('select_vencedor_', '');
-            const vencedor = interaction.values[0]; // "normal" ou "infinito"
-            // Marcar vencedor, registrar no ranking (opcional)
+            const vencedor = interaction.values[0];
             await interaction.editReply({ content: `🏆 Vencedor declarado: **${vencedor === 'normal' ? 'Time A (Gel Normal)' : 'Time B (Gel Infinito)'}**` });
             return;
         }
 
-        // Se nenhum dos anteriores, responde com erro genérico
         if (!interaction.replied && !interaction.deferred) {
             await interaction.reply({ content: "❌ Interação não reconhecida.", flags: MessageFlags.Ephemeral });
         }
