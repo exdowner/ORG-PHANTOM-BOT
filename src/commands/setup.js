@@ -8,7 +8,6 @@ module.exports = {
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     async execute(interaction) {
-        // ✅ Usa reply direto, sem deferReply
         const config = pegarConfig();
         if (!config.quantidade) config.quantidade = 1;
 
@@ -69,26 +68,11 @@ module.exports = {
                 )
         );
 
-        // LINHA 4: Emoji Gel
+        // LINHA 4: Emoji Gel + Botão Enviar (agora juntos)
         const rowEmojiGel = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("select_emoji_gel")
                 .setPlaceholder("Emoji Gel")
-                .addOptions(
-                    interaction.guild.emojis.cache.first(25).map(e =>
-                        new StringSelectMenuOptionBuilder()
-                            .setLabel(e.name)
-                            .setValue(`<:${e.name}:${e.id}>`)
-                            .setEmoji({ id: e.id, name: e.name })
-                    )
-                )
-        );
-
-        // LINHA 5: Emoji Emulador + Botão Enviar
-        const rowEmojiEmul = new ActionRowBuilder().addComponents(
-            new StringSelectMenuBuilder()
-                .setCustomId("select_emoji_emulador")
-                .setPlaceholder("Emoji Emulador")
                 .addOptions(
                     interaction.guild.emojis.cache.first(25).map(e =>
                         new StringSelectMenuOptionBuilder()
@@ -103,7 +87,22 @@ module.exports = {
                 .setStyle(ButtonStyle.Primary)
         );
 
-        // ✅ Resposta única: reply com ephemeral
+        // LINHA 5: Emoji Emulador (apenas o menu)
+        const rowEmojiEmul = new ActionRowBuilder().addComponents(
+            new StringSelectMenuBuilder()
+                .setCustomId("select_emoji_emulador")
+                .setPlaceholder("Emoji Emulador")
+                .addOptions(
+                    interaction.guild.emojis.cache.first(25).map(e =>
+                        new StringSelectMenuOptionBuilder()
+                            .setLabel(e.name)
+                            .setValue(`<:${e.name}:${e.id}>`)
+                            .setEmoji({ id: e.id, name: e.name })
+                    )
+                )
+        );
+
+        // Resposta única
         await interaction.reply({ 
             embeds: [embed], 
             components: [rowModo, rowValor, rowQuantidade, rowEmojiGel, rowEmojiEmul],
