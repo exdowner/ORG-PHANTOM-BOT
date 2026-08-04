@@ -284,11 +284,10 @@ module.exports = async (interaction) => {
                 }
             }
 
-            // ================== LÓGICA DAS FILAS (ENTRAR / SAIR) COM CORREÇÃO DE ATUALIZAÇÃO ==================
+            // ================== LÓGICA DAS FILAS ==================
             if (customId.startsWith("entrar_") || customId === "sair_fila") {
                 const painelId = message.id;
 
-                // Pega a configuração do painel (fallback silencioso, se necessário)
                 let configReal = filas.getConfig(painelId);
 
                 if (!configReal) {
@@ -346,7 +345,6 @@ module.exports = async (interaction) => {
                 else if (tipoFila === "1emulador") nomeFila = "1emulador";
                 else if (tipoFila === "2emuladores") nomeFila = "2emuladores";
 
-                // Executa a ação (entrar ou sair)
                 if (customId === "sair_fila") {
                     filas.sairFila(painelId, user);
                 } else {
@@ -357,7 +355,6 @@ module.exports = async (interaction) => {
                     }
                 }
 
-                // Atualiza o painel (o embed)
                 const lista1 = filas.jogadores(isEmulador ? "1emulador" : "normal", painelId);
                 const lista2 = filas.jogadores(isEmulador ? "2emuladores" : "infinito", painelId);
 
@@ -374,24 +371,26 @@ module.exports = async (interaction) => {
                     quantidade: configReal.quantidade || 1
                 };
 
+                // 🚀 Tenta montar o painel antes de editar, para garantir que não tem erro de emoji
                 const novoPainel = painelBuilder(configMock, lista1, lista2);
 
-                // Tenta atualizar o embed do painel
-                try {
-                    await message.edit(novoPainel);
-                } catch (err) {
-                    console.error("Erro ao editar o painel (embed):", err);
-                    // Se falhar, tenta uma segunda vez após um breve delay
-                    setTimeout(async () => {
-                        try {
-                            await message.edit(novoPainel);
-                        } catch (e) {
-                            console.error("Segunda tentativa de editar o painel também falhou:", e);
-                        }
-                    }, 500);
+                if (!novoPainel.components || novoPainel.components.length === 0) {
+                    console.error("⚠️ Painel gerado sem componentes. Verifique o painelBuilder.");
+                } else {
+                    try {
+                        await message.edit(novoPainel);
+                    } catch (err) {
+                        console.error("Erro ao editar o painel:", err);
+                        setTimeout(async () => {
+                            try {
+                                await message.edit(novoPainel);
+                            } catch (e) {
+                                console.error("Segunda tentativa falhou:", e);
+                            }
+                        }, 500);
+                    }
                 }
 
-                // Responde ao usuário com a mensagem de confirmação (sem conflito com o edit acima)
                 if (customId === "sair_fila") {
                     return await interaction.editReply({ content: `🚪 <@${user.id}>, saiu da fila!` });
                 }
