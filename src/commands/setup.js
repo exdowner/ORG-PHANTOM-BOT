@@ -4,39 +4,30 @@ const { pegarConfig } = require("../systems/config.js");
 module.exports = {
     data: new SlashCommandBuilder()
         .setName("setup")
-        .setDescription("Painel de configuração do bot")
+        .setDescription("Configura e envia os painéis de fila.")
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     async execute(interaction) {
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const config = pegarConfig();
 
         if (!config.quantidade) config.quantidade = 1;
 
         const embed = new EmbedBuilder()
             .setColor("#2b2d31")
-            .setTitle(`ORG PHANTOM | Editor (Preview ao Vivo)`)
-            .setDescription("As mudanças aparecem aqui em tempo real")
+            .setTitle(`⚙️ Configuração do Painel`)
+            .setDescription("Configure abaixo e clique em 'Enviar Painéis' para gerar os painéis com todos os valores.")
             .addFields(
-                { name: "**📛 Nome do Painel:**", value: `\`${config.nomePainel || "PHANTOM"}\``, inline: false },
-                { name: "**🎮 Modo:**", value: `\`${config.modo || "Mobile"}\``, inline: true },
-                { name: "**💰 Valor:**", value: `\`${config.valor || "20,00"}\``, inline: true },
-                { name: "**👥 Multiplicador:**", value: `\`${config.quantidade}x${config.quantidade}\``, inline: true },
-                { name: "**🔀 Misto:**", value: config.modoMisto ? "Ativado" : "Desativado", inline: false }
+                { name: "💰 Valor selecionado:", value: `\`${config.valor || "20,00"}\``, inline: true },
+                { name: "👥 Tamanho da fila:", value: `\`${config.quantidade}x${config.quantidade}\``, inline: true }
             )
             .setFooter({ text: "Só você pode ver esta mensagem • Ignorar mensagem" });
 
+        // Dropdown de Valor
         const row1 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId("editar_nome_painel").setLabel("📛 Nome").setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder().setCustomId("editar_modo").setLabel("🎮 Modo").setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder().setCustomId("ativar_misto").setLabel("🔀 Misto On/Off").setStyle(ButtonStyle.Primary),
-            new ButtonBuilder().setCustomId("salvar_config").setLabel("💾 Salvar").setStyle(ButtonStyle.Success)
-        );
-
-        const row2 = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("select_valor")
-                .setPlaceholder("Selecione o Valor do Painel")
+                .setPlaceholder("Selecione o Valor")
                 .addOptions(
                     new StringSelectMenuOptionBuilder().setLabel("R$ 100,00").setValue("100,00"),
                     new StringSelectMenuOptionBuilder().setLabel("R$ 50,00").setValue("50,00"),
@@ -50,10 +41,11 @@ module.exports = {
                 )
         );
 
-        const row3 = new ActionRowBuilder().addComponents(
+        // Dropdown de Quantidade
+        const row2 = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("select_quantidade")
-                .setPlaceholder("Selecione o Tamanho da Fila")
+                .setPlaceholder("Selecione o tamanho da fila")
                 .addOptions(
                     new StringSelectMenuOptionBuilder().setLabel("1x1 (2 jogadores)").setValue("1"),
                     new StringSelectMenuOptionBuilder().setLabel("2x2 (4 jogadores)").setValue("2"),
@@ -62,21 +54,17 @@ module.exports = {
                 )
         );
 
-        const row4 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId("escolher_emoji_gel_normal").setLabel("🧊 Gel Normal").setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId("escolher_emoji_gel_inf").setLabel("♾️ Gel Inf").setStyle(ButtonStyle.Success)
-        );
-
-        const row5 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId("escolher_emoji_emul1").setLabel("📱 Emul 1").setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId("escolher_emoji_emul2").setLabel("💻 Emul 2").setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId("escolher_emoji_sair").setLabel("🚪 Sair").setStyle(ButtonStyle.Danger),
-            new ButtonBuilder().setCustomId("enviar_painel_agora").setLabel("🚀 Enviar Painel").setStyle(ButtonStyle.Primary)
+        // Botão Enviar Painéis
+        const row3 = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId("enviar_paineis")
+                .setLabel("🚀 Enviar Painéis")
+                .setStyle(ButtonStyle.Primary)
         );
 
         return await interaction.editReply({ 
             embeds: [embed], 
-            components: [row1, row2, row3, row4, row5] 
+            components: [row1, row2, row3] 
         });
     }
 };
