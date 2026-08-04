@@ -1,47 +1,36 @@
-const fs = require('fs');
-const path = require('path');
+const fs = require("fs");
+const path = require("path");
 
-const caminhoConfig = path.join(__dirname, '../../config.json');
+const caminhoArquivo = path.join(__dirname, "../../botConfig.json");
 
-const defaultConfig = {
-    modo: "Mobile",
-    valor: "R$ 5,00",
-    quantidade: 2,
-    modoMisto: false,
-    emojiGelNormal: "🧊",
-    emojiGelInfinito: "♾️",
-    emojiSair: "🚪",
-    emojiEmul1: "📱",
-    emojiEmul2: "💻"
-};
-
-function pegarConfig() {
+function carregarConfig() {
     try {
-        if (!fs.existsSync(caminhoConfig)) {
-            fs.writeFileSync(caminhoConfig, JSON.stringify(defaultConfig, null, 2));
-            return defaultConfig;
+        if (fs.existsSync(caminhoArquivo)) {
+            const data = fs.readFileSync(caminhoArquivo, "utf8");
+            return JSON.parse(data);
         }
-        const dados = fs.readFileSync(caminhoConfig, 'utf8');
-        return { ...defaultConfig, ...JSON.parse(dados) };
     } catch (err) {
-        console.error("Erro ao ler config:", err);
-        return defaultConfig;
+        console.error("Erro ao carregar config:", err);
     }
+    return {
+        modo: "Mobile",
+        valor: "5,00",
+        quantidade: 1,
+        emojiGel: null,
+        emojiEmulador: null,
+        cargosPermitidos: []
+    };
 }
 
 function salvarConfig(novaConfig) {
     try {
-        const atual = pegarConfig();
-        const atualizado = { ...atual, ...novaConfig };
-        fs.writeFileSync(caminhoConfig, JSON.stringify(atualizado, null, 2));
-        return true;
+        fs.writeFileSync(caminhoArquivo, JSON.stringify(novaConfig, null, 2));
     } catch (err) {
         console.error("Erro ao salvar config:", err);
-        return false;
     }
 }
 
 module.exports = {
-    pegarConfig,
+    pegarConfig: carregarConfig,
     salvarConfig
 };

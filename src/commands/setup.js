@@ -24,7 +24,7 @@ module.exports = {
             )
             .setFooter({ text: "Só você pode ver esta mensagem • Ignorar mensagem" });
 
-        // LINHA 1: Modo
+        // LINHA 1: Modo + Valor (juntos, cabem perfeitamente)
         const row1 = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("select_modo")
@@ -33,11 +33,7 @@ module.exports = {
                     new StringSelectMenuOptionBuilder().setLabel("Mobile").setValue("Mobile"),
                     new StringSelectMenuOptionBuilder().setLabel("Emulador").setValue("Emulador"),
                     new StringSelectMenuOptionBuilder().setLabel("Misto").setValue("Misto")
-                )
-        );
-
-        // LINHA 2: Valor
-        const row2 = new ActionRowBuilder().addComponents(
+                ),
             new StringSelectMenuBuilder()
                 .setCustomId("select_valor")
                 .setPlaceholder("Valor")
@@ -54,8 +50,8 @@ module.exports = {
                 )
         );
 
-        // LINHA 3: Quantidade
-        const row3 = new ActionRowBuilder().addComponents(
+        // LINHA 2: Quantidade
+        const row2 = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("select_quantidade")
                 .setPlaceholder("Tamanho da fila")
@@ -67,13 +63,13 @@ module.exports = {
                 )
         );
 
-        // LINHA 4: Emoji Gel
-        const row4 = new ActionRowBuilder().addComponents(
+        // LINHA 3: Emoji Gel (apenas 10 primeiros emojis para evitar estouro)
+        const row3 = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("select_emoji_gel")
                 .setPlaceholder("Emoji Gel")
                 .addOptions(
-                    interaction.guild.emojis.cache.first(25).map(e =>
+                    interaction.guild.emojis.cache.first(10).map(e =>
                         new StringSelectMenuOptionBuilder()
                             .setLabel(e.name)
                             .setValue(`<:${e.name}:${e.id}>`)
@@ -82,19 +78,23 @@ module.exports = {
                 )
         );
 
-        // LINHA 5: Emoji Emulador + Botão Enviar
-        const row5 = new ActionRowBuilder().addComponents(
+        // LINHA 4: Emoji Emulador (apenas 10 primeiros emojis)
+        const row4 = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("select_emoji_emulador")
                 .setPlaceholder("Emoji Emulador")
                 .addOptions(
-                    interaction.guild.emojis.cache.first(25).map(e =>
+                    interaction.guild.emojis.cache.first(10).map(e =>
                         new StringSelectMenuOptionBuilder()
                             .setLabel(e.name)
                             .setValue(`<:${e.name}:${e.id}>`)
                             .setEmoji({ id: e.id, name: e.name })
                     )
-                ),
+                )
+        );
+
+        // LINHA 5: Botão Enviar (sozinho)
+        const row5 = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
                 .setCustomId("enviar_paineis")
                 .setLabel("🚀 Enviar Painéis")
