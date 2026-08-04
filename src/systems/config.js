@@ -16,8 +16,9 @@ function carregarConfig() {
         nomePainel: "PHANTOM",
         valor: "5,00",
         quantidade: 1, // 1 = 1x1
-        modo: "Mobile", // ou "Misto"
-        modoMisto: false
+        modoMisto: false,
+        emojiGel: null,
+        emojiEmulador: null
     };
 }
 

@@ -30,7 +30,7 @@ module.exports = {
                 infinito: [],
                 config: null,
                 matchChannelId: null,
-                matchStatus: "pendente" // pendente, confirmada, finalizada
+                matchStatus: "pendente"
             };
         }
         paineisCache[painelId].config = JSON.parse(JSON.stringify(config));
@@ -74,12 +74,14 @@ module.exports = {
             salvarConfigs(paineisCache);
         }
         const fila = paineisCache[painelId];
-        // Verifica se já está em alguma fila
+
+        // 🔥 Verifica se o usuário já está em ALGUMA fila deste painel
         for (const key of ['normal', 'infinito']) {
             if (fila[key].some(j => j.id === user.id)) {
-                return { ok: false, motivo: `❌ <@${user.id}>, você já está em uma fila!` };
+                return { ok: false, motivo: `❌ <@${user.id}>, você já está em uma fila deste painel!` };
             }
         }
+
         if (tipoFila === 'normal') {
             fila.normal.push(user);
         } else if (tipoFila === 'infinito') {
@@ -111,7 +113,7 @@ module.exports = {
         return fila[tipoFila] || [];
     },
 
-    // Remove todos os jogadores (útil após finalizar)
+    // 🔥 Limpa as filas (útil após finalizar ou cancelar)
     limparFilas(painelId) {
         if (!paineisCache[painelId]) return;
         paineisCache[painelId].normal = [];

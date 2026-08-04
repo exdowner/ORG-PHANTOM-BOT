@@ -19,11 +19,15 @@ module.exports = {
             .setDescription("Configure abaixo e clique em 'Enviar Painéis' para gerar os painéis.")
             .addFields(
                 { name: "💰 Valor selecionado:", value: `\`${config.valor || "5,00"}\``, inline: true },
-                { name: "👥 Tamanho da fila:", value: `\`${config.quantidade}x${config.quantidade}\``, inline: true }
+                { name: "👥 Tamanho da fila:", value: `\`${config.quantidade}x${config.quantidade}\``, inline: true },
+                { name: "🎮 Modo:", value: config.modoMisto ? "Misto" : "Normal", inline: true },
+                { name: "😊 Emoji Gel:", value: config.emojiGel || "Nenhum", inline: true },
+                { name: "😊 Emoji Emulador:", value: config.emojiEmulador || "Nenhum", inline: true }
             )
             .setFooter({ text: "Só você pode ver esta mensagem • Ignorar mensagem" });
 
-        const row1 = new ActionRowBuilder().addComponents(
+        // Linhas de componentes
+        const rowValor = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("select_valor")
                 .setPlaceholder("Selecione o Valor")
@@ -40,7 +44,7 @@ module.exports = {
                 )
         );
 
-        const row2 = new ActionRowBuilder().addComponents(
+        const rowQuantidade = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("select_quantidade")
                 .setPlaceholder("Selecione o tamanho da fila")
@@ -52,7 +56,41 @@ module.exports = {
                 )
         );
 
-        const row3 = new ActionRowBuilder().addComponents(
+        // 🔥 Seletores de Emojis (usam emojis do servidor)
+        const rowEmojiGel = new ActionRowBuilder().addComponents(
+            new StringSelectMenuBuilder()
+                .setCustomId("select_emoji_gel")
+                .setPlaceholder("Emoji para Gel")
+                .addOptions(
+                    interaction.guild.emojis.cache.first(20).map(e =>
+                        new StringSelectMenuOptionBuilder()
+                            .setLabel(e.name)
+                            .setValue(`<:${e.name}:${e.id}>`)
+                            .setEmoji({ id: e.id, name: e.name })
+                    )
+                )
+        );
+
+        const rowEmojiEmul = new ActionRowBuilder().addComponents(
+            new StringSelectMenuBuilder()
+                .setCustomId("select_emoji_emulador")
+                .setPlaceholder("Emoji para Emulador")
+                .addOptions(
+                    interaction.guild.emojis.cache.first(20).map(e =>
+                        new StringSelectMenuOptionBuilder()
+                            .setLabel(e.name)
+                            .setValue(`<:${e.name}:${e.id}>`)
+                            .setEmoji({ id: e.id, name: e.name })
+                    )
+                )
+        );
+
+        // Botões de ação
+        const rowAcao = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId("alternar_misto")
+                .setLabel("🔄 Alternar Misto")
+                .setStyle(config.modoMisto ? ButtonStyle.Success : ButtonStyle.Secondary),
             new ButtonBuilder()
                 .setCustomId("enviar_paineis")
                 .setLabel("🚀 Enviar Painéis")
@@ -61,7 +99,7 @@ module.exports = {
 
         return await interaction.editReply({ 
             embeds: [embed], 
-            components: [row1, row2, row3] 
+            components: [rowValor, rowQuantidade, rowEmojiGel, rowEmojiEmul, rowAcao] 
         });
     }
 };
