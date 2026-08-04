@@ -21,7 +21,6 @@ const salvarConfig = configModule.salvarConfig || (() => ({}));
 
 module.exports = async (interaction) => {
     try {
-        // ----------- COMANDOS SLASH -----------
         if (interaction.isChatInputCommand()) {
             const command = interaction.client.commands.get(interaction.commandName);
             if (!command) return;
@@ -36,7 +35,7 @@ module.exports = async (interaction) => {
             return;
         }
 
-        // ----------- MODAIS (Nome e Modo) -----------
+        // ----------- MODAIS -----------
         if (interaction.isModalSubmit()) {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
             const config = pegarConfig();
@@ -50,7 +49,6 @@ module.exports = async (interaction) => {
 
             salvarConfig(config);
 
-            // Atualiza o preview do /setup ao vivo
             const msgOriginal = interaction.message;
             if (msgOriginal && msgOriginal.embeds.length > 0) {
                 const embed = EmbedBuilder.from(msgOriginal.embeds[0]);
@@ -66,7 +64,7 @@ module.exports = async (interaction) => {
             return await interaction.editReply({ content: "✅ Configuração alterada!" });
         }
 
-        // ----------- MENUS DE SELEÇÃO (Valor, Quantidade, Emojis) -----------
+        // ----------- MENUS DE SELEÇÃO -----------
         if (interaction.isStringSelectMenu()) {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
             const config = pegarConfig();
@@ -91,7 +89,6 @@ module.exports = async (interaction) => {
 
             salvarConfig(config);
 
-            // Atualiza o preview do /setup ao vivo
             const msgOriginal = interaction.message;
             if (msgOriginal && msgOriginal.embeds.length > 0) {
                 const embed = EmbedBuilder.from(msgOriginal.embeds[0]);
@@ -110,7 +107,7 @@ module.exports = async (interaction) => {
         if (interaction.isButton()) {
             const { customId, user, guild, message, channel } = interaction;
 
-            // ================== BOTÕES QUE ABREM MODAIS (SEM deferReply) ==================
+            // BOTÕES QUE ABREM MODAIS
             if (customId === "editar_nome_painel") {
                 const modal = new ModalBuilder().setCustomId("modal_editar_nome_painel").setTitle("Editar Nome");
                 const input = new TextInputBuilder().setCustomId("input_nome_painel").setLabel("Nome do Painel").setStyle(TextInputStyle.Short).setRequired(true);
@@ -125,7 +122,7 @@ module.exports = async (interaction) => {
                 return await interaction.showModal(modal);
             }
 
-            // ================== BOTÕES DE EMOJI (SEM deferReply) ==================
+            // BOTÕES DE EMOJI
             if (customId.startsWith("escolher_emoji_")) {
                 const tipo = customId.replace("escolher_emoji_", "");
                 const emojisDoServidor = guild.emojis.cache.first(25);
@@ -147,7 +144,7 @@ module.exports = async (interaction) => {
                 return await interaction.reply({ content: "Escolha o emoji abaixo:", components: [row], flags: MessageFlags.Ephemeral });
             }
 
-            // ================== BOTÕES QUE PRECISAM DE deferReply ==================
+            // BOTÕES DE AÇÃO (Precisam de deferReply)
             await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
 
             if (customId === "ativar_misto") {
@@ -168,16 +165,12 @@ module.exports = async (interaction) => {
                 return await interaction.editReply({ content: "✅ Salvo!" });
             }
 
-            // ================== BOTÃO "ENVIAR PAINEL" ==================
+            // BOTÃO "ENVIAR PAINEL"
             if (customId === "enviar_painel_agora") {
                 const configBase = pegarConfig();
                 if (!configBase.quantidade) configBase.quantidade = 1;
 
-                const listaValores = [
-                    "100,00", "50,00", "20,00", "10,00", "5,00", 
-                    "3,00", "2,00", "1,00", "0,50"
-                ];
-
+                const listaValores = ["100,00", "50,00", "20,00", "10,00", "5,00", "3,00", "2,00", "1,00", "0,50"];
                 let mensagensEnviadas = 0;
 
                 for (const valor of listaValores) {
@@ -203,7 +196,7 @@ module.exports = async (interaction) => {
                 });
             }
 
-            // ================== PERFIL E RANKING ==================
+            // PERFIL E RANKING
             if (customId === "btn_meu_perfil") {
                 const perfil = ranking.pegarPerfil(user.id);
                 const total = perfil.vitorias + perfil.derrotas;
@@ -227,13 +220,11 @@ module.exports = async (interaction) => {
                 return await interaction.editReply({ embeds: [embed] });
             }
 
-            // ================== TICKETS ==================
+            // TICKETS
             if (customId === "abrir_ticket") {
                 const ticketsExistentes = guild.channels.cache.filter(c => 
-                    c.type === ChannelType.GuildText && 
-                    c.name.startsWith(`ticket-${user.username}`)
+                    c.type === ChannelType.GuildText && c.name.startsWith(`ticket-${user.username}`)
                 );
-                
                 if (ticketsExistentes.size > 0) {
                     return await interaction.editReply({ 
                         content: `❌ Você já possui um ticket aberto! Acesse: <#${ticketsExistentes.first().id}>` 
@@ -267,7 +258,6 @@ module.exports = async (interaction) => {
                     return await interaction.editReply({ 
                         content: `✅ Ticket criado com sucesso! Acesse: <#${ticketChannel.id}>` 
                     });
-
                 } catch (err) {
                     console.error("Erro ao criar ticket:", err);
                     return await interaction.editReply({ 
@@ -290,19 +280,79 @@ module.exports = async (interaction) => {
                 }
             }
 
-            // ================== LÓGICA DAS FILAS (ENTRAR / SAIR) ==================
+            // ================== LÓGICA DAS FILAS (ENTRAR / SAIR) COM RECUPERAÇÃO SILENCIOSA ==================
             if (customId.startsWith("entrar_") || customId === "sair_fila") {
                 const painelId = message.id;
 
-                // Agora a configuração SEMPRE vem do JSON, nunca se perde!
-                const configReal = filas.getConfig(painelId);
+                // Tenta obter a configuração salva
+                let configReal = filas.getConfig(painelId);
+
+                // Se não existir, cria um fallback silenciosamente
                 if (!configReal) {
-                    // Se por algum motivo não existir (ex: painel muito antigo), pede para recriar
-                    return await interaction.editReply({ 
-                        content: "❌ Este painel não possui configuração salva. Use /setupenvia para gerar um novo." 
-                    });
+                    console.log(`🔁 [RECUPERAÇÃO] Painel ${painelId} sem configuração. Criando fallback.`);
+
+                    // Analisa o título do embed para extrair Nome e Valor
+                    const titulo = message.embeds[0]?.title || "";
+                    const partes = titulo.split("|");
+                    const nomePainel = partes[0]?.trim() || "PHANTOM";
+                    const valor = partes[1]?.trim() || "20,00";
+
+                    // Analisa os botões para determinar o modo e se é misto
+                    let modoDetectado = "Mobile";
+                    let mistoDetectado = false;
+
+                    const botoes = message.components?.[0]?.components || [];
+                    for (let btn of botoes) {
+                        if (!btn) continue;
+                        const label = btn.label || "";
+                        if (label.includes("Emulador")) {
+                            modoDetectado = "Emulador";
+                            // Se os botões são verdes (Success), significa que Misto está ativado
+                            if (btn.style === ButtonStyle.Success) {
+                                mistoDetectado = true;
+                            }
+                        } else if (label.includes("Gel")) {
+                            modoDetectado = "Mobile";
+                            mistoDetectado = false;
+                        }
+                    }
+
+                    const configFallback = {
+                        modoMisto: mistoDetectado,
+                        modo: modoDetectado,
+                        valor: valor,
+                        nomePainel: nomePainel,
+                        emojiGelNormal: null,
+                        emojiGelInfinito: null,
+                        emojiEmul1: null,
+                        emojiEmul2: null,
+                        emojiSair: null,
+                        quantidade: 1 // padrão
+                    };
+
+                    // Salva o fallback no sistema de filas
+                    filas.setConfig(painelId, configFallback);
+                    configReal = filas.getConfig(painelId);
                 }
 
+                // Se ainda assim não tiver, usa um fallback genérico (nunca mostra erro)
+                if (!configReal) {
+                    console.error(`❌ ERRO CRÍTICO: Painel ${painelId} não pode ser recuperado. Usando fallback genérico.`);
+                    configReal = {
+                        modoMisto: false,
+                        modo: "Mobile",
+                        valor: "20,00",
+                        nomePainel: "PHANTOM",
+                        emojiGelNormal: null,
+                        emojiGelInfinito: null,
+                        emojiEmul1: null,
+                        emojiEmul2: null,
+                        emojiSair: null,
+                        quantidade: 1
+                    };
+                }
+
+                // Agora configReal está sempre definido
                 const isMisto = configReal.modoMisto === true;
                 const isEmulador = isMisto || (configReal.modo && configReal.modo.toLowerCase() === "emulador");
 
@@ -315,7 +365,9 @@ module.exports = async (interaction) => {
                     filas.sairFila(painelId, user);
                 } else {
                     const resultado = filas.entrarFila(painelId, nomeFila, user);
-                    if (!resultado.ok) return await interaction.editReply({ content: resultado.motivo });
+                    if (!resultado.ok) {
+                        return await interaction.editReply({ content: resultado.motivo });
+                    }
                 }
 
                 const lista1 = filas.jogadores(isEmulador ? "1emulador" : "normal", painelId);
