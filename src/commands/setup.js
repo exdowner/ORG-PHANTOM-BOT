@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, MessageFlags, PermissionFlagsBits } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, MessageFlags, PermissionFlagsBits } = require("discord.js");
 const { pegarConfig } = require("../systems/config.js");
 
 module.exports = {
@@ -15,8 +15,8 @@ module.exports = {
             .setTitle("⚙️ Painel de Configuração | ORG PHANTOM")
             .setDescription(
                 "1️⃣ Escolha o **Modo** e o **Valor** nos menus.\n" +
-                "2️⃣ Clique no botão do emoji que deseja configurar.\n" +
-                "3️⃣ Selecione o emoji no menu universal abaixo."
+                "2️⃣ Clique no botão do emoji que deseja configurar para abrir o seletor dele.\n" +
+                "3️⃣ Clique nos botões de envio para publicar os painéis."
             )
             .addFields(
                 { name: "🎮 Modo", value: `\`${config.modo || "Mobile"}\``, inline: true },
@@ -59,29 +59,14 @@ module.exports = {
             new ButtonBuilder().setCustomId("edit_emu2").setLabel("2 Emus").setStyle(ButtonStyle.Secondary)
         );
 
-        const emojisServidor = interaction.guild.emojis.cache.first(25).map(e => 
-            new StringSelectMenuOptionBuilder()
-                .setLabel(e.name)
-                .setValue(e.id)
-                .setEmoji({ id: e.id, name: e.name })
-        );
-
         const row4 = new ActionRowBuilder().addComponents(
-            new StringSelectMenuBuilder()
-                .setCustomId("select_emoji_universal")
-                .setPlaceholder("✨ Selecionar Emoji")
-                .addOptions(emojisServidor.length > 0 ? emojisServidor : [{ label: "Sem emojis no servidor", value: "none" }])
-                .setDisabled(emojisServidor.length === 0)
-        );
-
-        const row5 = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId("enviar_unico").setLabel("🚀 Enviar Apenas Este Painel").setStyle(ButtonStyle.Success),
             new ButtonBuilder().setCustomId("enviar_todos_valores").setLabel("📦 Enviar Pack Completo (100 a 0,50)").setStyle(ButtonStyle.Primary)
         );
 
         await interaction.reply({ 
             embeds: [embed], 
-            components: [row1, row2, row3, row4, row5], 
+            components: [row1, row2, row3, row4], 
             flags: MessageFlags.Ephemeral 
         });
     }

@@ -5,9 +5,6 @@ const configModule = require("../systems/config.js");
 const pegarConfig = configModule.pegarConfig || (() => ({}));
 const salvarConfig = configModule.salvarConfig || (() => ({}));
 
-// Armazena temporariamente qual campo de emoji o usuário escolheu editar
-let editTarget = {}; 
-
 module.exports = async (interaction) => {
     try {
         const config = pegarConfig();
@@ -39,9 +36,35 @@ module.exports = async (interaction) => {
             return;
         }
 
-        // --- SELETORES DO SETUP ---
+        // --- SELETORES DE EMOJI DINÂMICOS (POR CAMPO) ---
+        if (interaction.isStringSelectMenu() && interaction.customId.startsWith("set_emoji_")) {
+            if (!interaction.deferred && !interaction.replied) {
+                await interaction.deferUpdate();
+            }
+
+            const campo = interaction.customId.replace("set_emoji_", ""); // ex: emojiGelNormal
+            const emojiId = interaction.values[0];
+
+            if (emojiId !== "none") {
+                const emojiObj = interaction.guild.emojis.cache.get(emojiId);
+                if (emojiObj) {
+                    config[campo] = `<:${emojiObj.name}:${emojiObj.id}>`;
+                    salvarConfig(config);
+                }
+            }
+
+            // Atualiza o painel principal
+            const msgOriginal = interaction.message.reference ? await interaction.channel.messages.fetch(interaction.message.reference.messageId).catch(() => null) : null;
+            
+            // Apaga o aviso temporário de seleção
+            await interaction.deleteReply().catch(() => {});
+
+            return;
+        }
+
+        // --- SELETORES DO SETUP (MODO / VALOR) ---
         if (interaction.isStringSelectMenu()) {
-            if (["select_modo", "select_valor", "select_emoji_universal"].includes(interaction.customId)) {
+            if (["select_modo", "select_valor"].includes(interaction.customId)) {
                 if (!interaction.deferred && !interaction.replied) {
                     await interaction.deferUpdate();
                 }
@@ -50,24 +73,10 @@ module.exports = async (interaction) => {
                     config.modo = interaction.values[0];
                 } else if (interaction.customId === "select_valor") {
                     config.valor = interaction.values[0];
-                } else if (interaction.customId === "select_emoji_universal") {
-                    const target = editTarget[interaction.user.id];
-                    const emojiId = interaction.values[0];
-
-                    if (target && emojiId !== "none") {
-                        const emojiObj = interaction.guild.emojis.cache.get(emojiId);
-                        if (emojiObj) {
-                            config[target] = `<:${emojiObj.name}:${emojiObj.id}>`;
-                        }
-                    }
-                    // Limpa a seleção ativa do usuário para evitar sobreposição nos próximos cliques
-                    delete editTarget[interaction.user.id];
                 }
 
-                // Salva permanentemente a configuração
                 salvarConfig(config);
 
-                // Atualiza o Embed no setup mantendo TODOS os valores já salvos
                 const msgOriginal = interaction.message;
                 if (msgOriginal && msgOriginal.embeds.length > 0) {
                     const newEmbed = EmbedBuilder.from(msgOriginal.embeds[0])
@@ -82,7 +91,6 @@ module.exports = async (interaction) => {
                         );
 
                     await interaction.editReply({ 
-                        content: "✅ Configuração atualizada com sucesso!",
                         embeds: [newEmbed] 
                     });
                 }
@@ -94,12 +102,8 @@ module.exports = async (interaction) => {
         if (interaction.isButton()) {
             const { customId, user, guild, message } = interaction;
 
-            // --- SELECIONAR CAMPO DE EMOJI PARA EDITAR ---
+            // --- BOTÃO DE SELECIONAR EMOJI (GERA MENU EXCLUSIVO) ---
             if (customId.startsWith("edit_")) {
-                if (!interaction.deferred && !interaction.replied) {
-                    await interaction.deferUpdate();
-                }
-
                 const targets = { 
                     edit_gel_normal: "emojiGelNormal", 
                     edit_gel_infinito: "emojiGelInfinito", 
@@ -107,23 +111,36 @@ module.exports = async (interaction) => {
                     edit_emu2: "emojiEmu2" 
                 };
 
-                const nomesFormatados = {
-                    edit_gel_normal: "Gel Normal 🧊",
-                    edit_gel_infinito: "Gel Infinito ♾️",
-                    edit_emu1: "1 Emulador 📱",
-                    edit_emu2: "2 Emuladores 💻"
-                };
+                const campoTarget = targets[customId];
+                
+                const emojisServidor = guild.emojis.cache.first(25).map(e => 
+                    new StringSelectMenuOptionBuilder()
+                        .setLabel(e.name)
+                        .setValue(e.id)
+                        .setEmoji({ id: e.id, name: e.name })
+                );
 
-                editTarget[user.id] = targets[customId];
+                if (emojisServidor.length === 0) {
+                    await interaction.reply({ content: "❌ Este servidor não possui emojis customizados cadastrados.", flags: MessageFlags.Ephemeral });
+                    return;
+                }
 
-                await interaction.followUp({ 
-                    content: `👉 Seleção ativa para **${nomesFormatados[customId]}**. Escolha o emoji desejado no menu **"Selecionar Emoji"**.`, 
+                const menuEmoji = new ActionRowBuilder().addComponents(
+                    new StringSelectMenuBuilder()
+                        .setCustomId(`set_emoji_${campoTarget}`)
+                        .setPlaceholder("✨ Escolha o emoji desejado para esta opção")
+                        .addOptions(emojisServidor)
+                );
+
+                await interaction.reply({ 
+                    content: `👉 Selecione abaixo qual emoji aplicar para **${customId.replace("edit_", "").toUpperCase()}**:`, 
+                    components: [menuEmoji], 
                     flags: MessageFlags.Ephemeral 
                 });
                 return;
             }
 
-            // --- ENVIO ÚNICO (SNAPSHOT INDEPENDENTE) ---
+            // --- ENVIO ÚNICO ---
             if (customId === "enviar_unico") {
                 const snapshot = JSON.parse(JSON.stringify(config));
                 const painel = painelBuilder(snapshot, [], []);
@@ -142,7 +159,7 @@ module.exports = async (interaction) => {
                 return;
             }
 
-            // --- ENVIO DO PACK COMPLETO (100,00 ATÉ 0,50) ---
+            // --- ENVIO DO PACK COMPLETO ---
             if (customId === "enviar_todos_valores") {
                 await interaction.reply({ content: "⏳ Enviando pack de 9 painéis...", flags: MessageFlags.Ephemeral });
                 const valores = ["100,00", "50,00", "20,00", "10,00", "5,00", "3,00", "2,00", "1,00", "0,50"];
@@ -176,7 +193,6 @@ module.exports = async (interaction) => {
                 const painelId = message.id;
                 let configReal = filas.getConfig(painelId);
 
-                // Fallback de segurança caso o bot reinicie
                 if (!configReal) {
                     const titulo = message.embeds[0]?.title || "";
                     const partes = titulo.split("|");
