@@ -5,7 +5,7 @@ const configModule = require("../systems/config.js");
 const pegarConfig = configModule.pegarConfig || (() => ({}));
 const salvarConfig = configModule.salvarConfig || (() => ({}));
 
-// Armazena qual emoji o usuário está editando no setup (por ID do usuário)
+// Armazena temporariamente qual emoji o usuário escolheu editar no setup (por ID do usuário)
 let editTarget = {}; 
 
 module.exports = async (interaction) => {
@@ -29,7 +29,7 @@ module.exports = async (interaction) => {
             return;
         }
 
-        // --- MENU VENCEDOR ---
+        // --- MENU VENCEDOR DO MEDIADOR ---
         if (interaction.isStringSelectMenu() && interaction.customId.startsWith('select_vencedor_')) {
             if (!interaction.deferred && !interaction.replied) {
                 await interaction.deferReply({ flags: MessageFlags.Ephemeral });
@@ -43,50 +43,72 @@ module.exports = async (interaction) => {
         if (interaction.isStringSelectMenu()) {
             if (["select_modo", "select_valor", "select_emoji_universal"].includes(interaction.customId)) {
                 await interaction.deferUpdate();
-                
-                if (interaction.customId === "select_modo") config.modo = interaction.values[0];
-                if (interaction.customId === "select_valor") config.valor = interaction.values[0];
-                if (interaction.customId === "select_emoji_universal") {
+
+                if (interaction.customId === "select_modo") {
+                    config.modo = interaction.values[0];
+                } else if (interaction.customId === "select_valor") {
+                    config.valor = interaction.values[0];
+                } else if (interaction.customId === "select_emoji_universal") {
                     const target = editTarget[interaction.user.id];
-                    if (target) config[target] = interaction.values[0];
+                    if (target && interaction.values[0] !== "none") {
+                        config[target] = interaction.values[0];
+                    }
                 }
-                
+
+                // Salva permanentemente a configuração
                 salvarConfig(config);
 
-                // Atualiza a embed de preview usando EmbedBuilder.from para evitar erro de método
+                // Atualiza a embed de preview com o visual limpo
                 const msgOriginal = interaction.message;
                 if (msgOriginal && msgOriginal.embeds.length > 0) {
-                    const newEmbed = EmbedBuilder.from(msgOriginal.embeds[0]).setFields(
-                        { name: "🎮 Modo:", value: config.modo || "Mobile", inline: true },
-                        { name: "💰 Valor:", value: `\`R$ ${config.valor || "5,00"}\``, inline: true },
-                        { name: "👥 Tamanho:", value: `\`${config.quantidade || 1}x${config.quantidade || 1}\``, inline: true },
-                        { name: "🧊 Gel Normal:", value: config.emojiGelNormal || "🧊", inline: true },
-                        { name: "♾️ Gel Infinito:", value: config.emojiGelInfinito || "♾️", inline: true },
-                        { name: "📱 1 Emu:", value: config.emojiEmu1 || "📱", inline: true },
-                        { name: "💻 2 Emus:", value: config.emojiEmu2 || "💻", inline: true }
-                    );
-                    await interaction.editReply({ embeds: [newEmbed] });
+                    const newEmbed = EmbedBuilder.from(msgOriginal.embeds[0])
+                        .setFields(
+                            { name: "🎮 Modo", value: `\`${config.modo || "Mobile"}\``, inline: true },
+                            { name: "💰 Valor", value: `\`R$ ${config.valor || "5,00"}\``, inline: true },
+                            { name: "👥 Tamanho", value: `\`${(config.quantidade || 1) * 2} Players (${config.quantidade || 1}x${config.quantidade || 1})\``, inline: true },
+                            { name: "🧊 Gel Normal", value: config.emojiGelNormal || "🧊", inline: true },
+                            { name: "♾️ Gel Infinito", value: config.emojiGelInfinito || "♾️", inline: true },
+                            { name: "📱 1 Emulador", value: config.emojiEmu1 || "📱", inline: true },
+                            { name: "💻 2 Emuladores", value: config.emojiEmu2 || "💻", inline: true }
+                        );
+
+                    await interaction.editReply({ 
+                        content: "✅ Configuração atualizada com sucesso!",
+                        embeds: [newEmbed] 
+                    });
                 }
                 return;
             }
         }
 
-        // --- BOTÕES DE INTERAÇÃO ---
+        // --- BOTÕES ---
         if (interaction.isButton()) {
             const { customId, user, guild, message } = interaction;
 
-            // --- SELECIONAR EMOJI PARA EDITAR ---
+            // --- SELECIONAR QUAL EMOJI EDITAR ---
             if (customId.startsWith("edit_")) {
                 await interaction.deferUpdate();
+
                 const targets = { 
                     edit_gel_normal: "emojiGelNormal", 
                     edit_gel_infinito: "emojiGelInfinito", 
                     edit_emu1: "emojiEmu1", 
                     edit_emu2: "emojiEmu2" 
                 };
+
+                const nomesFormatados = {
+                    edit_gel_normal: "Gel Normal 🧊",
+                    edit_gel_infinito: "Gel Infinito ♾️",
+                    edit_emu1: "1 Emulador 📱",
+                    edit_emu2: "2 Emuladores 💻"
+                };
+
                 editTarget[user.id] = targets[customId];
-                const nomeCampo = customId.replace("edit_", "").replace("_", " ").toUpperCase();
-                await interaction.followUp({ content: `✅ Agora escolha o emoji no menu para: **${nomeCampo}**`, flags: MessageFlags.Ephemeral });
+
+                await interaction.followUp({ 
+                    content: `👉 Agora selecione no menu abaixo qual emoji quer usar para: **${nomesFormatados[customId]}**`, 
+                    flags: MessageFlags.Ephemeral 
+                });
                 return;
             }
 
@@ -98,7 +120,10 @@ module.exports = async (interaction) => {
                 try {
                     const msg = await interaction.channel.send({ embeds: painel.embeds, components: painel.components });
                     filas.setConfig(msg.id, snapshot);
-                    await interaction.reply({ content: `✅ Painel único (**${snapshot.modo || "Mobile"}** - R$ ${snapshot.valor || "5,00"}) enviado!`, flags: MessageFlags.Ephemeral });
+                    await interaction.reply({ 
+                        content: `✅ Painel único (**${snapshot.modo || "Mobile"}** - R$ ${snapshot.valor || "5,00"}) enviado!`, 
+                        flags: MessageFlags.Ephemeral 
+                    });
                 } catch (err) {
                     console.error("Erro ao enviar painel único:", err);
                     await interaction.reply({ content: "❌ Erro ao enviar painel no canal.", flags: MessageFlags.Ephemeral });
@@ -106,7 +131,7 @@ module.exports = async (interaction) => {
                 return;
             }
 
-            // --- ENVIO DO PACK (R$ 100,00 ATÉ R$ 0,50) ---
+            // --- ENVIO DO PACK COMPLETO (100,00 ATÉ 0,50) ---
             if (customId === "enviar_todos_valores") {
                 await interaction.reply({ content: "⏳ Enviando pack de 9 painéis...", flags: MessageFlags.Ephemeral });
                 const valores = ["100,00", "50,00", "20,00", "10,00", "5,00", "3,00", "2,00", "1,00", "0,50"];
@@ -122,12 +147,12 @@ module.exports = async (interaction) => {
                         filas.setConfig(msg.id, snapshot);
                         enviados++;
                     } catch (err) {
-                        console.error(`Erro ao enviar valor R$ ${v}:`, err);
+                        console.error(`Erro ao enviar painel R$ ${v}:`, err);
                     }
                     await new Promise(r => setTimeout(r, 800));
                 }
 
-                await interaction.editReply({ content: `✅ Pack concluído! ${enviados}/9 painéis enviados com sucesso.` });
+                await interaction.editReply({ content: `✅ Pack concluído! ${enviados}/9 painéis foram criados com sucesso.` });
                 return;
             }
 
@@ -140,7 +165,7 @@ module.exports = async (interaction) => {
                 const painelId = message.id;
                 let configReal = filas.getConfig(painelId);
 
-                // Fallback de segurança se o bot reiniciar
+                // Fallback de segurança se o bot for reiniciado
                 if (!configReal) {
                     const titulo = message.embeds[0]?.title || "";
                     const partes = titulo.split("|");
@@ -182,7 +207,7 @@ module.exports = async (interaction) => {
                 return;
             }
 
-            // --- BOTÃO CONFIRMAR ---
+            // --- BOTÃO CONFIRMAR PRESENÇA ---
             if (customId === "confirmar_partida") {
                 if (!interaction.deferred && !interaction.replied) {
                     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
@@ -263,7 +288,7 @@ module.exports = async (interaction) => {
                 return;
             }
 
-            // --- AÇÕES DO MEDIADOR ---
+            // --- AÇÕES DO PAINEL DO MEDIADOR ---
             if (customId.startsWith("mediador_")) {
                 const painelId = interaction.channel.topic || null;
                 if (!painelId) {
