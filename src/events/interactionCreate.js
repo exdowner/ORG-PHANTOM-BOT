@@ -1,4 +1,3 @@
-
 const { EmbedBuilder, MessageFlags, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ChannelType, PermissionFlagsBits } = require("discord.js");
 const filas = require("../systems/filas.js");
 const painelBuilder = require("../systems/painelBuilder.js");
@@ -6,8 +5,13 @@ const configModule = require("../systems/config.js");
 const pegarConfig = configModule.pegarConfig || (() => ({}));
 const salvarConfig = configModule.salvarConfig || (() => ({}));
 
+// Armazena qual emoji o usuário está editando no setup (por ID do usuário)
+let editTarget = {}; 
+
 module.exports = async (interaction) => {
     try {
+        const config = pegarConfig();
+
         // --- COMANDOS SLASH ---
         if (interaction.isChatInputCommand()) {
             const command = interaction.client.commands.get(interaction.commandName);
@@ -35,89 +39,95 @@ module.exports = async (interaction) => {
             return;
         }
 
-        // --- MENUS DE CONFIGURAÇÃO DO SETUP ---
+        // --- SELETORES DO SETUP ---
         if (interaction.isStringSelectMenu()) {
-            if (!interaction.deferred && !interaction.replied) {
-                await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-            }
-
-            const config = pegarConfig();
-            const valor = interaction.values[0];
-
-            if (interaction.customId === "select_modo") {
-                config.modo = valor;
-            } else if (interaction.customId === "select_valor") {
-                config.valor = valor;
-            } else if (interaction.customId === "select_quantidade") {
-                const qtd = parseInt(valor);
-                if (!isNaN(qtd) && qtd > 0) config.quantidade = qtd;
-            } else if (interaction.customId === "select_tipo_misto") {
-                config.tipoMisto = valor; // "1emu" ou "2emu"
-            } else if (interaction.customId === "select_emoji_gel_normal") {
-                config.emojiGelNormal = valor;
-            } else if (interaction.customId === "select_emoji_gel_infinito") {
-                config.emojiGelInfinito = valor;
-            } else if (interaction.customId === "select_emoji_emu1") {
-                config.emojiEmu1 = valor;
-            } else if (interaction.customId === "select_emoji_emu2") {
-                config.emojiEmu2 = valor;
-            }
-
-            salvarConfig(config);
-
-            const msgOriginal = interaction.message;
-            if (msgOriginal && msgOriginal.embeds.length > 0) {
-                const embedOriginal = msgOriginal.embeds[0];
-                const newEmbed = EmbedBuilder.from(embedOriginal).setFields(
-                    { name: "🎮 Modo Atual:", value: config.modo || "Mobile", inline: true },
-                    { name: "👥 Tamanho:", value: `\`${config.quantidade || 1}x${config.quantidade || 1}\``, inline: true },
-                    { name: "💰 Valor:", value: `\`R$ ${config.valor || "5,00"}\``, inline: true },
-                    { name: "🧊 Gel Normal:", value: config.emojiGelNormal || "🧊", inline: true },
-                    { name: "♾️ Gel Infinito:", value: config.emojiGelInfinito || "♾️", inline: true },
-                    { name: "📱 1 Emu p/ time:", value: config.emojiEmu1 || "📱", inline: true },
-                    { name: "💻 2 Emus p/ time:", value: config.emojiEmu2 || "💻", inline: true }
-                );
-                try {
-                    await msgOriginal.edit({ embeds: [newEmbed] });
-                } catch (err) {
-                    console.error("Erro ao atualizar preview:", err);
+            if (["select_modo", "select_valor", "select_emoji_universal"].includes(interaction.customId)) {
+                await interaction.deferUpdate();
+                
+                if (interaction.customId === "select_modo") config.modo = interaction.values[0];
+                if (interaction.customId === "select_valor") config.valor = interaction.values[0];
+                if (interaction.customId === "select_emoji_universal") {
+                    const target = editTarget[interaction.user.id];
+                    if (target) config[target] = interaction.values[0];
                 }
-            }
+                
+                salvarConfig(config);
 
-            await interaction.editReply({ content: "✅ Configuração do setup atualizada!" });
-            return;
+                // Atualiza a embed de preview usando EmbedBuilder.from para evitar erro de método
+                const msgOriginal = interaction.message;
+                if (msgOriginal && msgOriginal.embeds.length > 0) {
+                    const newEmbed = EmbedBuilder.from(msgOriginal.embeds[0]).setFields(
+                        { name: "🎮 Modo:", value: config.modo || "Mobile", inline: true },
+                        { name: "💰 Valor:", value: `\`R$ ${config.valor || "5,00"}\``, inline: true },
+                        { name: "👥 Tamanho:", value: `\`${config.quantidade || 1}x${config.quantidade || 1}\``, inline: true },
+                        { name: "🧊 Gel Normal:", value: config.emojiGelNormal || "🧊", inline: true },
+                        { name: "♾️ Gel Infinito:", value: config.emojiGelInfinito || "♾️", inline: true },
+                        { name: "📱 1 Emu:", value: config.emojiEmu1 || "📱", inline: true },
+                        { name: "💻 2 Emus:", value: config.emojiEmu2 || "💻", inline: true }
+                    );
+                    await interaction.editReply({ embeds: [newEmbed] });
+                }
+                return;
+            }
         }
 
-        // --- BOTÕES ---
+        // --- BOTÕES DE INTERAÇÃO ---
         if (interaction.isButton()) {
             const { customId, user, guild, message } = interaction;
 
-            // --- BOTÃO "ENVIAR PAINEL" (INDEPENDENTE) ---
-            if (customId === "enviar_paineis") {
-                const configBase = pegarConfig();
-                
-                // Cria uma cópia congelada totalmente desvinculada do setup
-                const configSnapshot = JSON.parse(JSON.stringify(configBase));
+            // --- SELECIONAR EMOJI PARA EDITAR ---
+            if (customId.startsWith("edit_")) {
+                await interaction.deferUpdate();
+                const targets = { 
+                    edit_gel_normal: "emojiGelNormal", 
+                    edit_gel_infinito: "emojiGelInfinito", 
+                    edit_emu1: "emojiEmu1", 
+                    edit_emu2: "emojiEmu2" 
+                };
+                editTarget[user.id] = targets[customId];
+                const nomeCampo = customId.replace("edit_", "").replace("_", " ").toUpperCase();
+                await interaction.followUp({ content: `✅ Agora escolha o emoji no menu para: **${nomeCampo}**`, flags: MessageFlags.Ephemeral });
+                return;
+            }
 
-                const painel = painelBuilder(configSnapshot, [], []);
+            // --- ENVIO ÚNICO (SNAPSHOT INDEPENDENTE) ---
+            if (customId === "enviar_unico") {
+                const snapshot = JSON.parse(JSON.stringify(config));
+                const painel = painelBuilder(snapshot, [], []);
 
                 try {
-                    const msg = await interaction.channel.send({
-                        embeds: painel.embeds,
-                        components: painel.components
-                    });
-                    
-                    // Vincula a config exclusiva para o ID desta mensagem no canal
-                    filas.setConfig(msg.id, configSnapshot);
-
-                    await interaction.reply({ 
-                        content: `✅ Painel do modo **${configSnapshot.modo || "Mobile"}** enviado! Futuras alterações no \`/setup\` não afetarão este painel.`, 
-                        flags: MessageFlags.Ephemeral 
-                    });
+                    const msg = await interaction.channel.send({ embeds: painel.embeds, components: painel.components });
+                    filas.setConfig(msg.id, snapshot);
+                    await interaction.reply({ content: `✅ Painel único (**${snapshot.modo || "Mobile"}** - R$ ${snapshot.valor || "5,00"}) enviado!`, flags: MessageFlags.Ephemeral });
                 } catch (err) {
-                    console.error("Erro ao enviar painel individual:", err);
-                    await interaction.reply({ content: "❌ Erro ao enviar o painel no canal.", flags: MessageFlags.Ephemeral });
+                    console.error("Erro ao enviar painel único:", err);
+                    await interaction.reply({ content: "❌ Erro ao enviar painel no canal.", flags: MessageFlags.Ephemeral });
                 }
+                return;
+            }
+
+            // --- ENVIO DO PACK (R$ 100,00 ATÉ R$ 0,50) ---
+            if (customId === "enviar_todos_valores") {
+                await interaction.reply({ content: "⏳ Enviando pack de 9 painéis...", flags: MessageFlags.Ephemeral });
+                const valores = ["100,00", "50,00", "20,00", "10,00", "5,00", "3,00", "2,00", "1,00", "0,50"];
+                let enviados = 0;
+
+                for (const v of valores) {
+                    const snapshot = JSON.parse(JSON.stringify(config));
+                    snapshot.valor = v;
+                    const painel = painelBuilder(snapshot, [], []);
+
+                    try {
+                        const msg = await interaction.channel.send({ embeds: painel.embeds, components: painel.components });
+                        filas.setConfig(msg.id, snapshot);
+                        enviados++;
+                    } catch (err) {
+                        console.error(`Erro ao enviar valor R$ ${v}:`, err);
+                    }
+                    await new Promise(r => setTimeout(r, 800));
+                }
+
+                await interaction.editReply({ content: `✅ Pack concluído! ${enviados}/9 painéis enviados com sucesso.` });
                 return;
             }
 
@@ -130,7 +140,7 @@ module.exports = async (interaction) => {
                 const painelId = message.id;
                 let configReal = filas.getConfig(painelId);
 
-                // Fallback de segurança se o bot reiniciar sem banco de dados
+                // Fallback de segurança se o bot reiniciar
                 if (!configReal) {
                     const titulo = message.embeds[0]?.title || "";
                     const partes = titulo.split("|");
@@ -162,7 +172,7 @@ module.exports = async (interaction) => {
                 try {
                     await message.edit(novoPainel);
                 } catch (err) {
-                    console.error("Erro ao editar painel:", err);
+                    console.error("Erro ao editar painel de fila:", err);
                 }
 
                 const resposta = customId === "sair_fila" 
