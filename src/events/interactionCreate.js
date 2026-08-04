@@ -290,49 +290,17 @@ module.exports = async (interaction) => {
                 }
             }
 
-            // ================== LÓGICA DAS FILAS (COM RECUPERAÇÃO DE FALHA) ==================
+            // ================== LÓGICA DAS FILAS (ENTRAR / SAIR) ==================
             if (customId.startsWith("entrar_") || customId === "sair_fila") {
                 const painelId = message.id;
 
-                // Tenta pegar a configuração congelada
-                let configReal = filas.getConfig(painelId);
-
-                // 🔥 CASO O BOT TENHA REINICIADO E PERDIDO A MEMÓRIA: RECONSTRUÍMOS A CONFIGURAÇÃO!
+                // Agora a configuração SEMPRE vem do JSON, nunca se perde!
+                const configReal = filas.getConfig(painelId);
                 if (!configReal) {
-                    console.log(`⚠️ [RECUPERAÇÃO] Configuração perdida para ${painelId}. Reconstruindo...`);
-                    
-                    // Tenta adivinhar a configuração olhando o título do painel atual
-                    const tituloAtual = message.embeds[0]?.title || "";
-                    const partesTitulo = tituloAtual.split("|");
-                    const nomePainel = partesTitulo[0]?.trim() || "PHANTOM";
-                    const valor = partesTitulo[1]?.trim() || "20,00";
-                    
-                    // Verifica se o título tem indícios de ser Misto ou Emulador
-                    const temEmulador = tituloAtual.includes("Emulador") || tituloAtual.includes("Emuladores");
-                    const temMisto = tituloAtual.toLowerCase().includes("misto");
-
-                    // Cria uma configuração "provisória" que salva o bot de cair no erro
-                    const configFallback = {
-                        modoMisto: temMisto || temEmulador,
-                        modo: temEmulador ? "Emulador" : "Mobile",
-                        valor: valor,
-                        nomePainel: nomePainel,
-                        emojiGelNormal: null,
-                        emojiGelInfinito: null,
-                        emojiEmul1: null,
-                        emojiEmul2: null,
-                        emojiSair: null,
-                        quantidade: 1 // Fallback padrão
-                    };
-
-                    // Salva essa config recuperada na memória para o resto da sessão
-                    filas.setConfig(painelId, configFallback);
-                    configReal = filas.getConfig(painelId);
-                }
-
-                // Se mesmo assim não tiver config, aí sim dá o erro (proteção final)
-                if (!configReal) {
-                    return await interaction.editReply({ content: "❌ Este painel está corrompido. Use /setupenvia para gerar um novo." });
+                    // Se por algum motivo não existir (ex: painel muito antigo), pede para recriar
+                    return await interaction.editReply({ 
+                        content: "❌ Este painel não possui configuração salva. Use /setupenvia para gerar um novo." 
+                    });
                 }
 
                 const isMisto = configReal.modoMisto === true;
