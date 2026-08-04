@@ -30,7 +30,8 @@ module.exports = {
                 infinito: [],
                 config: null,
                 matchChannelId: null,
-                matchStatus: "pendente"
+                matchStatus: "pendente",
+                confirmados: [] // IDs dos jogadores que confirmaram
             };
         }
         paineisCache[painelId].config = JSON.parse(JSON.stringify(config));
@@ -59,6 +60,20 @@ module.exports = {
         salvarConfigs(paineisCache);
     },
 
+    // Adiciona um jogador à lista de confirmados
+    adicionarConfirmado(painelId, userId) {
+        if (!paineisCache[painelId]) return;
+        if (!paineisCache[painelId].confirmados.includes(userId)) {
+            paineisCache[painelId].confirmados.push(userId);
+            salvarConfigs(paineisCache);
+        }
+    },
+
+    getConfirmados(painelId) {
+        if (!paineisCache[painelId]) return [];
+        return paineisCache[painelId].confirmados || [];
+    },
+
     entrarFila(painelId, tipoFila, user) {
         if (!painelId || !tipoFila || !user) {
             return { ok: false, motivo: "❌ Dados inválidos." };
@@ -69,13 +84,13 @@ module.exports = {
                 infinito: [],
                 config: null,
                 matchChannelId: null,
-                matchStatus: "pendente"
+                matchStatus: "pendente",
+                confirmados: []
             };
             salvarConfigs(paineisCache);
         }
         const fila = paineisCache[painelId];
 
-        // 🔥 Verifica se o usuário já está em ALGUMA fila deste painel
         for (const key of ['normal', 'infinito']) {
             if (fila[key].some(j => j.id === user.id)) {
                 return { ok: false, motivo: `❌ <@${user.id}>, você já está em uma fila deste painel!` };
@@ -103,6 +118,11 @@ module.exports = {
             fila[key] = fila[key].filter(j => j.id !== user.id);
             if (fila[key].length < antes) removeu = true;
         }
+        // Também remove da lista de confirmados se estiver lá
+        if (fila.confirmados.includes(user.id)) {
+            fila.confirmados = fila.confirmados.filter(id => id !== user.id);
+            removeu = true;
+        }
         if (removeu) salvarConfigs(paineisCache);
     },
 
@@ -113,11 +133,12 @@ module.exports = {
         return fila[tipoFila] || [];
     },
 
-    // 🔥 Limpa as filas (útil após finalizar ou cancelar)
+    // Limpa as filas e confirmados
     limparFilas(painelId) {
         if (!paineisCache[painelId]) return;
         paineisCache[painelId].normal = [];
         paineisCache[painelId].infinito = [];
+        paineisCache[painelId].confirmados = [];
         salvarConfigs(paineisCache);
     }
 };

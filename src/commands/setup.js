@@ -18,15 +18,28 @@ module.exports = {
             .setTitle(`⚙️ Configuração do Painel`)
             .setDescription("Configure abaixo e clique em 'Enviar Painéis' para gerar os painéis.")
             .addFields(
-                { name: "💰 Valor selecionado:", value: `\`${config.valor || "5,00"}\``, inline: true },
+                { name: "🎮 Modo:", value: config.modo || "Mobile", inline: true },
+                { name: "💰 Valor:", value: `\`${config.valor || "5,00"}\``, inline: true },
                 { name: "👥 Tamanho da fila:", value: `\`${config.quantidade}x${config.quantidade}\``, inline: true },
-                { name: "🎮 Modo:", value: config.modoMisto ? "Misto" : "Normal", inline: true },
                 { name: "😊 Emoji Gel:", value: config.emojiGel || "Nenhum", inline: true },
-                { name: "😊 Emoji Emulador:", value: config.emojiEmulador || "Nenhum", inline: true }
+                { name: "😊 Emoji Emulador:", value: config.emojiEmulador || "Nenhum", inline: true },
+                { name: "👑 Cargos Permitidos:", value: config.cargosPermitidos?.length ? config.cargosPermitidos.map(id => `<@&${id}>`).join(", ") : "Nenhum", inline: false }
             )
             .setFooter({ text: "Só você pode ver esta mensagem • Ignorar mensagem" });
 
-        // Linhas de componentes
+        // Seletor de Modo
+        const rowModo = new ActionRowBuilder().addComponents(
+            new StringSelectMenuBuilder()
+                .setCustomId("select_modo")
+                .setPlaceholder("Selecione o Modo")
+                .addOptions(
+                    new StringSelectMenuOptionBuilder().setLabel("Mobile").setValue("Mobile"),
+                    new StringSelectMenuOptionBuilder().setLabel("Emulador").setValue("Emulador"),
+                    new StringSelectMenuOptionBuilder().setLabel("Misto").setValue("Misto")
+                )
+        );
+
+        // Seletor de Valor
         const rowValor = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("select_valor")
@@ -44,6 +57,7 @@ module.exports = {
                 )
         );
 
+        // Seletor de Quantidade
         const rowQuantidade = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("select_quantidade")
@@ -56,13 +70,13 @@ module.exports = {
                 )
         );
 
-        // 🔥 Seletores de Emojis (usam emojis do servidor)
+        // Seletor de Emoji Gel
         const rowEmojiGel = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("select_emoji_gel")
                 .setPlaceholder("Emoji para Gel")
                 .addOptions(
-                    interaction.guild.emojis.cache.first(20).map(e =>
+                    interaction.guild.emojis.cache.first(25).map(e =>
                         new StringSelectMenuOptionBuilder()
                             .setLabel(e.name)
                             .setValue(`<:${e.name}:${e.id}>`)
@@ -71,12 +85,13 @@ module.exports = {
                 )
         );
 
+        // Seletor de Emoji Emulador
         const rowEmojiEmul = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("select_emoji_emulador")
                 .setPlaceholder("Emoji para Emulador")
                 .addOptions(
-                    interaction.guild.emojis.cache.first(20).map(e =>
+                    interaction.guild.emojis.cache.first(25).map(e =>
                         new StringSelectMenuOptionBuilder()
                             .setLabel(e.name)
                             .setValue(`<:${e.name}:${e.id}>`)
@@ -85,12 +100,28 @@ module.exports = {
                 )
         );
 
-        // Botões de ação
+        // Seletor de Cargos (multi-select)
+        const rowCargos = new ActionRowBuilder().addComponents(
+            new StringSelectMenuBuilder()
+                .setCustomId("select_cargos")
+                .setPlaceholder("Selecione os cargos que podem ver o painel")
+                .setMinValues(0)
+                .setMaxValues(5)
+                .addOptions(
+                    interaction.guild.roles.cache
+                        .filter(r => r.id !== interaction.guild.id) // remove @everyone
+                        .first(15)
+                        .map(r =>
+                            new StringSelectMenuOptionBuilder()
+                                .setLabel(r.name)
+                                .setValue(r.id)
+                                .setEmoji("👑")
+                        )
+                )
+        );
+
+        // Botão Enviar
         const rowAcao = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId("alternar_misto")
-                .setLabel("🔄 Alternar Misto")
-                .setStyle(config.modoMisto ? ButtonStyle.Success : ButtonStyle.Secondary),
             new ButtonBuilder()
                 .setCustomId("enviar_paineis")
                 .setLabel("🚀 Enviar Painéis")
@@ -99,7 +130,7 @@ module.exports = {
 
         return await interaction.editReply({ 
             embeds: [embed], 
-            components: [rowValor, rowQuantidade, rowEmojiGel, rowEmojiEmul, rowAcao] 
+            components: [rowModo, rowValor, rowQuantidade, rowEmojiGel, rowEmojiEmul, rowCargos, rowAcao] 
         });
     }
 };

@@ -14,11 +14,12 @@ function carregarConfig() {
     }
     return {
         nomePainel: "PHANTOM",
+        modo: "Mobile",
         valor: "5,00",
         quantidade: 1, // 1 = 1x1
-        modoMisto: false,
         emojiGel: null,
-        emojiEmulador: null
+        emojiEmulador: null,
+        cargosPermitidos: [] // IDs dos cargos que podem ver o painel de mediador
     };
 }
 
