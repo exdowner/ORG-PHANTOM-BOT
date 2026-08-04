@@ -1,72 +1,110 @@
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, MessageFlags, PermissionFlagsBits } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, MessageFlags, PermissionFlagsBits } = require("discord.js");
 const { pegarConfig } = require("../systems/config.js");
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName("setup")
-        .setDescription("Painel de configuração das filas.")
+        .setDescription("Configura e envia os painéis de fila.")
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     async execute(interaction) {
         const config = pegarConfig();
+        if (!config.quantidade) config.quantidade = 1;
 
         const embed = new EmbedBuilder()
             .setColor("#2b2d31")
-            .setTitle("⚙️ Configuração ORG PHANTOM")
-            .setDescription(
-                "1. Use os menus para Modo/Valor.\n" +
-                "2. Clique nos botões para escolher o emoji de cada campo.\n" +
-                "3. Escolha como deseja enviar."
-            )
+            .setTitle("⚙️ Configuração do Painel")
+            .setDescription("Configure abaixo e clique em 'Enviar Painéis'.")
             .addFields(
                 { name: "🎮 Modo:", value: config.modo || "Mobile", inline: true },
-                { name: "💰 Valor:", value: `R$ ${config.valor || "5,00"}`, inline: true },
-                { name: "👥 Tamanho:", value: `${config.quantidade || 1}x${config.quantidade || 1}`, inline: true },
-                { name: "🧊 Gel Normal:", value: config.emojiGelNormal || "🧊", inline: true },
-                { name: "♾️ Gel Infinito:", value: config.emojiGelInfinito || "♾️", inline: true },
-                { name: "📱 1 Emu:", value: config.emojiEmu1 || "📱", inline: true },
-                { name: "💻 2 Emus:", value: config.emojiEmu2 || "💻", inline: true }
-            );
+                { name: "💰 Valor:", value: `\`${config.valor || "5,00"}\``, inline: true },
+                { name: "👥 Tamanho:", value: `\`${config.quantidade}x${config.quantidade}\``, inline: true },
+                { name: "😊 Emoji Gel:", value: config.emojiGel || "Nenhum", inline: true },
+                { name: "😊 Emoji Emulador:", value: config.emojiEmulador || "Nenhum", inline: true }
+            )
+            .setFooter({ text: "Só você pode ver esta mensagem • Ignorar mensagem" });
 
+        // LINHA 1: Modo
         const row1 = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("select_modo")
-                .setPlaceholder("Selecionar Modo")
+                .setPlaceholder("Modo")
                 .addOptions(
-                    { label: "Mobile", value: "Mobile" },
-                    { label: "Emulador", value: "Emulador" },
-                    { label: "Misto", value: "Misto" }
+                    new StringSelectMenuOptionBuilder().setLabel("Mobile").setValue("Mobile"),
+                    new StringSelectMenuOptionBuilder().setLabel("Emulador").setValue("Emulador"),
+                    new StringSelectMenuOptionBuilder().setLabel("Misto").setValue("Misto")
                 )
         );
 
+        // LINHA 2: Valor
         const row2 = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("select_valor")
-                .setPlaceholder("Selecionar Valor")
+                .setPlaceholder("Valor")
                 .addOptions(
-                    ["100,00", "50,00", "20,00", "10,00", "5,00", "3,00", "2,00", "1,00", "0,50"].map(v => ({
-                        label: `R$ ${v}`,
-                        value: v
-                    }))
+                    new StringSelectMenuOptionBuilder().setLabel("R$ 100,00").setValue("100,00"),
+                    new StringSelectMenuOptionBuilder().setLabel("R$ 50,00").setValue("50,00"),
+                    new StringSelectMenuOptionBuilder().setLabel("R$ 20,00").setValue("20,00"),
+                    new StringSelectMenuOptionBuilder().setLabel("R$ 10,00").setValue("10,00"),
+                    new StringSelectMenuOptionBuilder().setLabel("R$ 5,00").setValue("5,00"),
+                    new StringSelectMenuOptionBuilder().setLabel("R$ 3,00").setValue("3,00"),
+                    new StringSelectMenuOptionBuilder().setLabel("R$ 2,00").setValue("2,00"),
+                    new StringSelectMenuOptionBuilder().setLabel("R$ 1,00").setValue("1,00"),
+                    new StringSelectMenuOptionBuilder().setLabel("R$ 0,50").setValue("0,50")
                 )
         );
 
+        // LINHA 3: Quantidade
         const row3 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId("edit_gel_normal").setLabel("Gel Normal").setStyle(ButtonStyle.Secondary).setEmoji("🧊"),
-            new ButtonBuilder().setCustomId("edit_gel_infinito").setLabel("Gel Infinito").setStyle(ButtonStyle.Secondary).setEmoji("♾️"),
-            new ButtonBuilder().setCustomId("edit_emu1").setLabel("1 Emu").setStyle(ButtonStyle.Secondary).setEmoji("📱"),
-            new ButtonBuilder().setCustomId("edit_emu2").setLabel("2 Emus").setStyle(ButtonStyle.Secondary).setEmoji("💻")
+            new StringSelectMenuBuilder()
+                .setCustomId("select_quantidade")
+                .setPlaceholder("Tamanho da fila")
+                .addOptions(
+                    new StringSelectMenuOptionBuilder().setLabel("1x1 (2 jogadores)").setValue("1"),
+                    new StringSelectMenuOptionBuilder().setLabel("2x2 (4 jogadores)").setValue("2"),
+                    new StringSelectMenuOptionBuilder().setLabel("3x3 (6 jogadores)").setValue("3"),
+                    new StringSelectMenuOptionBuilder().setLabel("4x4 (8 jogadores)").setValue("4")
+                )
         );
 
+        // LINHA 4: Emoji Gel
         const row4 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId("enviar_unico").setLabel("Enviar Este Painel").setStyle(ButtonStyle.Success).setEmoji("🚀"),
-            new ButtonBuilder().setCustomId("enviar_todos_valores").setLabel("Enviar Pack (100 a 0,50)").setStyle(ButtonStyle.Primary).setEmoji("📦")
+            new StringSelectMenuBuilder()
+                .setCustomId("select_emoji_gel")
+                .setPlaceholder("Emoji Gel")
+                .addOptions(
+                    interaction.guild.emojis.cache.first(25).map(e =>
+                        new StringSelectMenuOptionBuilder()
+                            .setLabel(e.name)
+                            .setValue(`<:${e.name}:${e.id}>`)
+                            .setEmoji({ id: e.id, name: e.name })
+                    )
+                )
+        );
+
+        // LINHA 5: Emoji Emulador + Botão Enviar
+        const row5 = new ActionRowBuilder().addComponents(
+            new StringSelectMenuBuilder()
+                .setCustomId("select_emoji_emulador")
+                .setPlaceholder("Emoji Emulador")
+                .addOptions(
+                    interaction.guild.emojis.cache.first(25).map(e =>
+                        new StringSelectMenuOptionBuilder()
+                            .setLabel(e.name)
+                            .setValue(`<:${e.name}:${e.id}>`)
+                            .setEmoji({ id: e.id, name: e.name })
+                    )
+                ),
+            new ButtonBuilder()
+                .setCustomId("enviar_paineis")
+                .setLabel("🚀 Enviar Painéis")
+                .setStyle(ButtonStyle.Primary)
         );
 
         await interaction.reply({ 
             embeds: [embed], 
-            components: [row1, row2, row3, row4], 
-            flags: MessageFlags.Ephemeral 
+            components: [row1, row2, row3, row4, row5],
+            flags: MessageFlags.Ephemeral
         });
     }
 };
