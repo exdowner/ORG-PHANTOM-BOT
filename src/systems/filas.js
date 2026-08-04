@@ -31,7 +31,7 @@ module.exports = {
                 config: null,
                 matchChannelId: null,
                 matchStatus: "pendente",
-                confirmados: [] // IDs dos jogadores que confirmaram
+                confirmados: []
             };
         }
         paineisCache[painelId].config = JSON.parse(JSON.stringify(config));
@@ -60,7 +60,6 @@ module.exports = {
         salvarConfigs(paineisCache);
     },
 
-    // Adiciona um jogador à lista de confirmados
     adicionarConfirmado(painelId, userId) {
         if (!paineisCache[painelId]) return;
         if (!paineisCache[painelId].confirmados.includes(userId)) {
@@ -118,7 +117,6 @@ module.exports = {
             fila[key] = fila[key].filter(j => j.id !== user.id);
             if (fila[key].length < antes) removeu = true;
         }
-        // Também remove da lista de confirmados se estiver lá
         if (fila.confirmados.includes(user.id)) {
             fila.confirmados = fila.confirmados.filter(id => id !== user.id);
             removeu = true;
@@ -133,7 +131,6 @@ module.exports = {
         return fila[tipoFila] || [];
     },
 
-    // Limpa as filas e confirmados
     limparFilas(painelId) {
         if (!paineisCache[painelId]) return;
         paineisCache[painelId].normal = [];

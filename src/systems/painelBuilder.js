@@ -16,7 +16,6 @@ module.exports = (config, filaNormal, filaInfinito, confirmados = []) => {
         .setThumbnail(urlImagem)
         .setFooter({ text: "ORG PHANTOM | Sistema de Partidas" });
 
-    // Determina os nomes e emojis baseados no modo
     const modoLower = (config.modo || "mobile").toLowerCase();
     const isMisto = modoLower === "misto";
     const isEmulador = modoLower === "emulador";
@@ -28,7 +27,6 @@ module.exports = (config, filaNormal, filaInfinito, confirmados = []) => {
         emoji1 = config.emojiEmulador || "📱";
         emoji2 = config.emojiEmulador || "💻";
     } else {
-        // Mobile
         nomeFila1 = "Gel Normal";
         nomeFila2 = "Gel Infinito";
         emoji1 = config.emojiGel || "🧊";
@@ -58,7 +56,6 @@ module.exports = (config, filaNormal, filaInfinito, confirmados = []) => {
                 .setStyle(ButtonStyle.Danger)
         );
 
-    // Botão confirmar progressivo
     const totalJogadores = filaNormal.length + filaInfinito.length;
     const confirmadosCount = confirmados.length;
     if (totalJogadores >= qtd) {
