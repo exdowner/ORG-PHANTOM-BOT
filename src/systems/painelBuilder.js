@@ -1,7 +1,10 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 
 module.exports = (config, fila1 = [], fila2 = []) => {
-    const qtd = config.quantidade || 2;
+    // 🔥 CORREÇÃO AQUI: O multiplicador * 2 define o total de vagas na fila
+    const multiplicador = config.quantidade || 1; // Se vier 1, é 1x1.
+    const qtd = multiplicador * 2; // 1x1 = 2 vagas, 2x2 = 4 vagas, etc.
+
     const titulo = `${config.nomePainel || "PHANTOM"} | ${config.valor || "5,00"}`;
     const urlImagem = "https://media.discordapp.net/attachments/1523200272158036008/1531973873116123276/Design_sem_nome.png";
 
@@ -18,7 +21,6 @@ module.exports = (config, fila1 = [], fila2 = []) => {
 
     const row = new ActionRowBuilder();
 
-    // 🔥 CORREÇÃO DA LÓGICA DE DETECÇÃO
     const isMisto = config.modoMisto === true;
     const isEmulador = isMisto || (config.modo && config.modo.toLowerCase() === "emulador");
 
@@ -33,7 +35,7 @@ module.exports = (config, fila1 = [], fila2 = []) => {
             .setCustomId("entrar_1emulador")
             .setLabel("1 Emulador")
             .setStyle(ButtonStyle.Success);
-        if (config.emojiEmul1) btn1.setEmoji(config.emojiEmul1); // 🛡️ Verifica se existe
+        if (config.emojiEmul1) btn1.setEmoji(config.emojiEmul1);
 
         const btn2 = new ButtonBuilder()
             .setCustomId("entrar_2emuladores")
