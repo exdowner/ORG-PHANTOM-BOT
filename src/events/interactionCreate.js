@@ -165,22 +165,14 @@ module.exports = async (interaction) => {
                 return await interaction.editReply({ content: "✅ Salvo!" });
             }
 
-            // 🔥 BOTÃO "ENVIAR PAINEL" (ORDEM EXATA CORRIGIDA)
+            // BOTÃO "ENVIAR PAINEL"
             if (customId === "enviar_painel_agora") {
                 const configBase = pegarConfig();
                 if (!configBase.quantidade) configBase.quantidade = 1;
 
-                // 💥 LISTA NA ORDEM CERTA, SEM DUPLICATAS
                 const listaValores = [
-                    "100,00", 
-                    "50,00", 
-                    "20,00", 
-                    "10,00", 
-                    "5,00", 
-                    "3,00", 
-                    "2,00", 
-                    "1,00", 
-                    "0,50"
+                    "100,00", "50,00", "20,00", "10,00", "5,00", 
+                    "3,00", "2,00", "1,00", "0,50"
                 ];
 
                 let mensagensEnviadas = 0;
@@ -200,12 +192,11 @@ module.exports = async (interaction) => {
                     } catch (err) {
                         console.error(`Erro ao enviar painel com valor ${valor}:`, err);
                     }
-                    // Aguarda 500ms entre cada envio para não dar rate limit
                     await new Promise(resolve => setTimeout(resolve, 500));
                 }
 
                 return await interaction.editReply({ 
-                    content: `✅ Foram enviados ${mensagensEnviadas} painéis (100,00 a 0,50) em ordem!` 
+                    content: `✅ Foram enviados ${mensagensEnviadas} painéis!` 
                 });
             }
 
@@ -293,15 +284,15 @@ module.exports = async (interaction) => {
                 }
             }
 
-            // ================== LÓGICA DAS FILAS (ENTRAR / SAIR) ==================
+            // ================== LÓGICA DAS FILAS (FALLBACK INTELIGENTE) ==================
             if (customId.startsWith("entrar_") || customId === "sair_fila") {
                 const painelId = message.id;
 
                 let configReal = filas.getConfig(painelId);
 
-                // Fallback silencioso
+                // Se não houver configuração salva, extraímos dos botões e do embed
                 if (!configReal) {
-                    console.log(`🔁 [RECUPERAÇÃO] Painel ${painelId} sem configuração. Criando fallback.`);
+                    console.log(`🔁 [RECUPERAÇÃO] Painel ${painelId} sem configuração. Extraindo dos botões...`);
 
                     const titulo = message.embeds[0]?.title || "";
                     const partes = titulo.split("|");
@@ -311,18 +302,47 @@ module.exports = async (interaction) => {
                     let modoDetectado = "Mobile";
                     let mistoDetectado = false;
 
-                    const botoes = message.components?.[0]?.components || [];
-                    for (let btn of botoes) {
-                        if (!btn) continue;
-                        const label = btn.label || "";
-                        if (label.includes("Emulador")) {
-                            modoDetectado = "Emulador";
-                            if (btn.style === ButtonStyle.Success) {
-                                mistoDetectado = true;
+                    // Mapeamento dos emojis extraídos dos botões
+                    const emojisExtraidos = {
+                        emojiGelNormal: null,
+                        emojiGelInfinito: null,
+                        emojiEmul1: null,
+                        emojiEmul2: null,
+                        emojiSair: null
+                    };
+
+                    // Itera sobre todos os botões do painel
+                    const row = message.components?.[0];
+                    if (row) {
+                        const botoes = row.components || [];
+                        for (let btn of botoes) {
+                            if (!btn) continue;
+                            const label = btn.label || "";
+                            const emoji = btn.emoji ? btn.emoji.toString() : null;
+
+                            // Detecta modo e misto pelo label e estilo
+                            if (label.includes("Emulador")) {
+                                modoDetectado = "Emulador";
+                                if (btn.style === ButtonStyle.Success) {
+                                    mistoDetectado = true;
+                                }
+                            } else if (label.includes("Gel")) {
+                                modoDetectado = "Mobile";
+                                mistoDetectado = false;
                             }
-                        } else if (label.includes("Gel")) {
-                            modoDetectado = "Mobile";
-                            mistoDetectado = false;
+
+                            // Mapeia os emojis
+                            if (label.includes("Gel Normal")) {
+                                emojisExtraidos.emojiGelNormal = emoji;
+                            } else if (label.includes("Gel Infinito")) {
+                                emojisExtraidos.emojiGelInfinito = emoji;
+                            } else if (label.includes("1 Emulador")) {
+                                emojisExtraidos.emojiEmul1 = emoji;
+                            } else if (label.includes("2 Emuladores")) {
+                                emojisExtraidos.emojiEmul2 = emoji;
+                            } else if (label === "Sair") {
+                                emojisExtraidos.emojiSair = emoji;
+                            }
                         }
                     }
 
@@ -331,18 +351,16 @@ module.exports = async (interaction) => {
                         modo: modoDetectado,
                         valor: valor,
                         nomePainel: nomePainel,
-                        emojiGelNormal: null,
-                        emojiGelInfinito: null,
-                        emojiEmul1: null,
-                        emojiEmul2: null,
-                        emojiSair: null,
-                        quantidade: 1
+                        ...emojisExtraidos,
+                        quantidade: 1 // padrão, pode ser ajustado se necessário
                     };
 
+                    // Salva a configuração recuperada para nunca mais perder
                     filas.setConfig(painelId, configFallback);
                     configReal = filas.getConfig(painelId);
                 }
 
+                // Se ainda assim não tiver, fallback genérico (nunca mostra erro)
                 if (!configReal) {
                     console.error(`❌ ERRO CRÍTICO: Painel ${painelId} não pode ser recuperado. Usando fallback genérico.`);
                     configReal = {
