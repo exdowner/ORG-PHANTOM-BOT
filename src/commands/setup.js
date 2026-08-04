@@ -8,9 +8,7 @@ module.exports = {
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     async execute(interaction) {
-        // ✅ Apenas um deferReply, sem risco de duplicata
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
+        // ✅ Usa reply direto, sem deferReply
         const config = pegarConfig();
         if (!config.quantidade) config.quantidade = 1;
 
@@ -105,9 +103,11 @@ module.exports = {
                 .setStyle(ButtonStyle.Primary)
         );
 
-        return await interaction.editReply({ 
+        // ✅ Resposta única: reply com ephemeral
+        await interaction.reply({ 
             embeds: [embed], 
-            components: [rowModo, rowValor, rowQuantidade, rowEmojiGel, rowEmojiEmul] 
+            components: [rowModo, rowValor, rowQuantidade, rowEmojiGel, rowEmojiEmul],
+            flags: MessageFlags.Ephemeral
         });
     }
 };
