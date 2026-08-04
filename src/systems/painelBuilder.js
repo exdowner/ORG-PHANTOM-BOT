@@ -2,7 +2,13 @@ const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("
 
 module.exports = (config, filaNormal, filaInfinito, confirmados = []) => {
     const qtd = (config.quantidade || 1) * 2;
-    const titulo = `Mobile | ${config.valor || "5,00"}`;
+    // Define o título baseado no modo
+    const modoSelecionado = config.modo || "Mobile";
+    const isMisto = config.modoMisto === true;
+    const isEmulador = isMisto || modoSelecionado.toLowerCase() === "emulador";
+
+    let titulo = `${modoSelecionado} | ${config.valor || "5,00"}`;
+    
     const urlImagem = "https://media.discordapp.net/attachments/1523200272158036008/1531973873116123276/Design_sem_nome.png";
 
     const formatar = (f) => {
@@ -16,10 +22,15 @@ module.exports = (config, filaNormal, filaInfinito, confirmados = []) => {
         .setThumbnail(urlImagem)
         .setFooter({ text: "ORG PHANTOM | Sistema de Partidas" });
 
-    // Define os nomes das filas de acordo com o modo Misto
-    const isMisto = config.modoMisto === true;
-    const nomeFila1 = isMisto ? "1 Emulador" : "Gel Normal";
-    const nomeFila2 = isMisto ? "2 Emuladores" : "Gel Infinito";
+    // Define os nomes das filas
+    let nomeFila1, nomeFila2;
+    if (isEmulador) {
+        nomeFila1 = "1 Emulador";
+        nomeFila2 = "2 Emuladores";
+    } else {
+        nomeFila1 = "Gel Normal";
+        nomeFila2 = "Gel Infinito";
+    }
 
     embed.addFields(
         { name: `${nomeFila1} (${filaNormal.length}/${qtd})`, value: formatar(filaNormal), inline: false },
@@ -31,11 +42,11 @@ module.exports = (config, filaNormal, filaInfinito, confirmados = []) => {
             new ButtonBuilder()
                 .setCustomId("entrar_fila1")
                 .setLabel(nomeFila1)
-                .setStyle(ButtonStyle.Secondary),
+                .setStyle(isMisto ? ButtonStyle.Success : ButtonStyle.Primary), // Misto = Verde, outros = Azul
             new ButtonBuilder()
                 .setCustomId("entrar_fila2")
                 .setLabel(nomeFila2)
-                .setStyle(ButtonStyle.Secondary),
+                .setStyle(isMisto ? ButtonStyle.Success : ButtonStyle.Primary),
             new ButtonBuilder()
                 .setCustomId("sair_fila")
                 .setLabel("Sair")

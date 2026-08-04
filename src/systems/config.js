@@ -13,6 +13,7 @@ function carregarConfig() {
         console.error("Erro ao carregar config:", err);
     }
     return {
+        modo: "Mobile",
         valor: "5,00",
         quantidade: 1,
         modoMisto: false

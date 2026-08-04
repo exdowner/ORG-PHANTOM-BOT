@@ -16,13 +16,26 @@ module.exports = {
             .setTitle("⚙️ Configuração do Painel")
             .setDescription("Configure abaixo e clique em 'Salvar'.")
             .addFields(
+                { name: "🎮 Modo:", value: config.modo || "Mobile", inline: true },
                 { name: "💰 Valor:", value: `\`${config.valor || "5,00"}\``, inline: true },
                 { name: "👥 Tamanho:", value: `\`${config.quantidade}x${config.quantidade}\``, inline: true },
                 { name: "🔀 Misto:", value: config.modoMisto ? "Ativado" : "Desativado", inline: true }
             )
             .setFooter({ text: "Só você pode ver esta mensagem • Ignorar mensagem" });
 
-        // LINHA 1: Valor
+        // LINHA 1: Modo
+        const row0 = new ActionRowBuilder().addComponents(
+            new StringSelectMenuBuilder()
+                .setCustomId("select_modo")
+                .setPlaceholder("Modo")
+                .addOptions(
+                    new StringSelectMenuOptionBuilder().setLabel("Mobile").setValue("Mobile"),
+                    new StringSelectMenuOptionBuilder().setLabel("Emulador").setValue("Emulador"),
+                    new StringSelectMenuOptionBuilder().setLabel("Misto").setValue("Misto")
+                )
+        );
+
+        // LINHA 2: Valor
         const row1 = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("select_valor")
@@ -40,7 +53,7 @@ module.exports = {
                 )
         );
 
-        // LINHA 2: Quantidade
+        // LINHA 3: Quantidade
         const row2 = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("select_quantidade")
@@ -53,12 +66,8 @@ module.exports = {
                 )
         );
 
-        // LINHA 3: Botão Misto On/Off e Salvar
+        // LINHA 4: Salvar
         const row3 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId("alternar_misto")
-                .setLabel(config.modoMisto ? "🔀 Misto: Ativado" : "🔀 Misto: Desativado")
-                .setStyle(config.modoMisto ? ButtonStyle.Success : ButtonStyle.Secondary),
             new ButtonBuilder()
                 .setCustomId("salvar_config")
                 .setLabel("💾 Salvar Configuração")
@@ -67,7 +76,7 @@ module.exports = {
 
         return await interaction.reply({ 
             embeds: [embed], 
-            components: [row1, row2, row3],
+            components: [row0, row1, row2, row3],
             flags: MessageFlags.Ephemeral
         });
     }
