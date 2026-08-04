@@ -42,7 +42,9 @@ module.exports = async (interaction) => {
         // --- SELETORES DO SETUP ---
         if (interaction.isStringSelectMenu()) {
             if (["select_modo", "select_valor", "select_emoji_universal"].includes(interaction.customId)) {
-                await interaction.deferUpdate();
+                if (!interaction.deferred && !interaction.replied) {
+                    await interaction.deferUpdate();
+                }
 
                 if (interaction.customId === "select_modo") {
                     config.modo = interaction.values[0];
@@ -50,25 +52,24 @@ module.exports = async (interaction) => {
                     config.valor = interaction.values[0];
                 } else if (interaction.customId === "select_emoji_universal") {
                     const target = editTarget[interaction.user.id];
-                    const valorSelecionado = interaction.values[0];
+                    const emojiId = interaction.values[0];
 
-                    if (target && valorSelecionado !== "none") {
-                        // Formata o emoji para o padrão Discord (<:nome:id>) de forma independente
-                        const [nome, id] = valorSelecionado.split(":");
-                        config[target] = `<:${nome}:${id}>`;
+                    if (target && emojiId !== "none") {
+                        const emojiObj = interaction.guild.emojis.cache.get(emojiId);
+                        if (emojiObj) {
+                            config[target] = `<:${emojiObj.name}:${emojiObj.id}>`;
+                        }
                     }
+                    // Limpa a seleção ativa do usuário para evitar sobreposição nos próximos cliques
+                    delete editTarget[interaction.user.id];
                 }
 
                 // Salva permanentemente a configuração
                 salvarConfig(config);
 
-                // Atualiza a embed de preview no painel de setup
+                // Atualiza o Embed no setup mantendo TODOS os valores já salvos
                 const msgOriginal = interaction.message;
                 if (msgOriginal && msgOriginal.embeds.length > 0) {
-                    const targetNome = editTarget[interaction.user.id] 
-                        ? ` (Editado: **${editTarget[interaction.user.id]}**)` 
-                        : "";
-
                     const newEmbed = EmbedBuilder.from(msgOriginal.embeds[0])
                         .setFields(
                             { name: "🎮 Modo", value: `\`${config.modo || "Mobile"}\``, inline: true },
@@ -81,7 +82,7 @@ module.exports = async (interaction) => {
                         );
 
                     await interaction.editReply({ 
-                        content: `✅ Configuração atualizada com sucesso!${targetNome}`,
+                        content: "✅ Configuração atualizada com sucesso!",
                         embeds: [newEmbed] 
                     });
                 }
@@ -95,7 +96,9 @@ module.exports = async (interaction) => {
 
             // --- SELECIONAR CAMPO DE EMOJI PARA EDITAR ---
             if (customId.startsWith("edit_")) {
-                await interaction.deferUpdate();
+                if (!interaction.deferred && !interaction.replied) {
+                    await interaction.deferUpdate();
+                }
 
                 const targets = { 
                     edit_gel_normal: "emojiGelNormal", 

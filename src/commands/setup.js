@@ -14,9 +14,9 @@ module.exports = {
             .setColor("#2b2d31")
             .setTitle("⚙️ Painel de Configuração | ORG PHANTOM")
             .setDescription(
-                "1️⃣ Escolha o **Modo** e o **Valor** nos menus abaixo.\n" +
+                "1️⃣ Escolha o **Modo** e o **Valor** nos menus.\n" +
                 "2️⃣ Clique no botão do emoji que deseja configurar.\n" +
-                "3️⃣ Selecione o emoji no menu e envie o painel."
+                "3️⃣ Selecione o emoji no menu universal abaixo."
             )
             .addFields(
                 { name: "🎮 Modo", value: `\`${config.modo || "Mobile"}\``, inline: true },
@@ -59,11 +59,10 @@ module.exports = {
             new ButtonBuilder().setCustomId("edit_emu2").setLabel("2 Emus").setStyle(ButtonStyle.Secondary)
         );
 
-        // Mapeia os emojis garantindo id único na escolha para permitir emojis repetidos sem conflito
-        const emojisServidor = interaction.guild.emojis.cache.first(25).map((e, index) => 
+        const emojisServidor = interaction.guild.emojis.cache.first(25).map(e => 
             new StringSelectMenuOptionBuilder()
                 .setLabel(e.name)
-                .setValue(`${e.name}:${e.id}`)
+                .setValue(e.id)
                 .setEmoji({ id: e.id, name: e.name })
         );
 
